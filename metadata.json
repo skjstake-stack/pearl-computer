@@ -1,0 +1,6 @@
+{
+  "name": "Pearl Computer & Target Academy",
+  "description": "Learn Today • Lead Tomorrow - Official Portal & EdTech Platform for Pearl Computer & Target Academy",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
