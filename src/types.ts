@@ -20,7 +20,54 @@ export interface QuickNavItem {
   updatedAt?: string;
 }
 
-export type UserRole = 'student' | 'faculty' | 'admin' | 'superadmin';
+export type UserRole = 'student' | 'faculty' | 'admin' | 'superadmin' | 'center';
+
+export interface CenterPermissions {
+  canStudentAdmissions: boolean;
+  canStudentManagement: boolean;
+  canStudentLoginCreation: boolean;
+  canCourseEnrollment: boolean;
+  canBatchAssignment: boolean;
+  canAttendanceManagement: boolean;
+  canFeeCollection: boolean;
+  canFeeReceiptGeneration: boolean;
+  canStudyMaterialUpload: boolean;
+  canNotices: boolean;
+  canGalleryView: boolean;
+  canReportsView: boolean;
+  canStudentResults: boolean;
+  canCertificateVerification: boolean;
+  canStudentIdCardGen: boolean;
+}
+
+export interface CenterAccount {
+  id: string;
+  centerCode: string;
+  centerName: string;
+  username: string;
+  email: string;
+  mobile: string;
+  passwordHash?: string;
+  headPersonName: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  status: 'Active' | 'Inactive' | 'Suspended';
+  admissionLimit: number;
+  usedAdmissionsCount: number;
+  storageLimitGb: number;
+  usedStorageMb: number;
+  assignedCourses: string[];
+  assignedBatches: string[];
+  permissions: CenterPermissions;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string;
+  lastLoginIp?: string;
+  loginCount?: number;
+  twoFactorEnabled?: boolean;
+}
 
 export interface UserSession {
   id: string;
@@ -30,6 +77,10 @@ export interface UserSession {
   role: UserRole;
   studentId?: string;
   employeeId?: string;
+  centerId?: string;
+  centerCode?: string;
+  centerName?: string;
+  centerPermissions?: CenterPermissions;
   avatar?: string;
   isFirstLogin?: boolean;
   coursesAssigned?: string[];

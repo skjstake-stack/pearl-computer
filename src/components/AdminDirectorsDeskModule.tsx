@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ShieldAlert,
   Save,
@@ -18,7 +18,17 @@ import {
   RefreshCw,
   Clock,
   Send,
-  Layers
+  Layers,
+  Trash2,
+  Image as ImageIcon,
+  Crop,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Maximize2,
+  FileImage,
+  Camera,
+  CheckCircle2
 } from 'lucide-react';
 import { RichTextEditor } from './RichTextEditor';
 import { DirectorsDeskSection } from './DirectorsDeskSection';
@@ -42,10 +52,25 @@ export const AdminDirectorsDeskModule: React.FC<AdminDirectorsDeskModuleProps> =
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Preview Modal
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // Photo Upload & Crop Modal States
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const [rawFileName, setRawFileName] = useState<string>('');
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropRotation, setCropRotation] = useState(0);
+  const [enlargedPhotoOpen, setEnlargedPhotoOpen] = useState(false);
+
+  // Canvas ref for image crop processing
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Fetch initial data
   const loadData = async () => {
@@ -123,7 +148,175 @@ export const AdminDirectorsDeskModule: React.FC<AdminDirectorsDeskModuleProps> =
     }) : null);
   };
 
-  // Save / Publish submit
+  // --- File Selection & Validation Logic ---
+  const handleFileSelect = (file: File) => {
+    setUploadError(null);
+
+    // Validate size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError(`File size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the 5 MB limit. Please select a smaller photo.`);
+      return;
+    }
+
+    // Validate type (WebP, JPG, JPEG, PNG)
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      setUploadError('Invalid image format! Only WebP, JPG, JPEG, and PNG images are supported.');
+      return;
+    }
+
+    // Read image for Cropper Modal
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setRawImageSrc(reader.result);
+        setRawFileName(file.name);
+        setCropZoom(1);
+        setCropRotation(0);
+        setCropModalOpen(true);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+
+  // --- Crop, Resize (600x600 px) & Compress Processing ---
+  const applyCropAndProcess = async () => {
+    if (!rawImageSrc) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      const img = new Image();
+      img.src = rawImageSrc;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Could not get canvas context');
+
+      // Recommended fixed dimensions: 600 x 600 px
+      const targetWidth = 600;
+      const targetHeight = 600;
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      // Fill clear background
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+      ctx.save();
+      ctx.translate(targetWidth / 2, targetHeight / 2);
+      ctx.rotate((cropRotation * Math.PI) / 180);
+      ctx.scale(cropZoom, cropZoom);
+
+      // Center crop positioning
+      const minDim = Math.min(img.width, img.height);
+      const sx = (img.width - minDim) / 2;
+      const sy = (img.height - minDim) / 2;
+
+      ctx.drawImage(
+        img,
+        sx,
+        sy,
+        minDim,
+        minDim,
+        -targetWidth / 2,
+        -targetHeight / 2,
+        targetWidth,
+        targetHeight
+      );
+
+      ctx.restore();
+
+      // Compress to WebP (fallback to JPEG if webp unsupported)
+      let compressedBase64 = canvas.toDataURL('image/webp', 0.88);
+      if (!compressedBase64.startsWith('data:image/webp')) {
+        compressedBase64 = canvas.toDataURL('image/jpeg', 0.88);
+      }
+
+      // Server Upload Request
+      const action = formData?.photoUrl ? 'replace' : 'upload';
+      const uploadRes = await fetch('/api/admin/directors-desk/upload-photo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': userRole,
+          'x-user-name': userName
+        },
+        body: JSON.stringify({
+          imageBase64: compressedBase64,
+          fileName: rawFileName,
+          action
+        })
+      });
+
+      const uploadResult = await uploadRes.json();
+      if (uploadResult.success) {
+        setFormData(prev => prev ? ({ ...prev, photoUrl: uploadResult.photoUrl }) : null);
+        setStatusMessage({
+          type: 'success',
+          text: `Director Photo ${action === 'replace' ? 'replaced' : 'uploaded'} and compressed to 600×600 px successfully!`
+        });
+        setCropModalOpen(false);
+      } else {
+        setUploadError(uploadResult.message || 'Failed to save uploaded photo to server.');
+      }
+    } catch (err) {
+      console.error('Photo crop processing error:', err);
+      setUploadError('An error occurred while cropping and compressing the image.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  // --- Remove Director Photo Handler ---
+  const handleRemovePhoto = async () => {
+    if (!confirm('Are you sure you want to remove the Director\'s photo?')) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      const res = await fetch('/api/admin/directors-desk/photo', {
+        method: 'DELETE',
+        headers: {
+          'x-user-role': userRole,
+          'x-user-name': userName
+        }
+      });
+      const result = await res.json();
+      if (result.success) {
+        setFormData(prev => prev ? ({ ...prev, photoUrl: '' }) : null);
+        setStatusMessage({ type: 'success', text: 'Director photo removed successfully!' });
+      } else {
+        setStatusMessage({ type: 'error', text: result.message || 'Failed to remove photo.' });
+      }
+    } catch (err) {
+      setStatusMessage({ type: 'error', text: 'Server error while removing photo.' });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  // --- Save / Publish Form Submit ---
   const handleSubmit = async (publishState?: boolean) => {
     setIsSaving(true);
     setStatusMessage(null);
@@ -318,7 +511,7 @@ export const AdminDirectorsDeskModule: React.FC<AdminDirectorsDeskModuleProps> =
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="e.g. Er. Rajeshwar Bisan"
+                    placeholder="e.g. Mr. Bisan Kanarzee"
                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
@@ -351,27 +544,189 @@ export const AdminDirectorsDeskModule: React.FC<AdminDirectorsDeskModuleProps> =
                   />
                 </div>
 
-                {/* Photo URL */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                    <span>Director Photo URL</span>
-                    <span className="text-[10px] text-slate-400">High Resolution Portrait</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={formData.photoUrl}
-                      onChange={(e) => handleInputChange('photoUrl', e.target.value)}
-                      placeholder="https://..."
-                      className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
+                {/* DIRECTOR PHOTO MANAGEMENT MODULE */}
+                <div className="md:col-span-2 bg-gradient-to-br from-slate-50 to-blue-50/40 dark:from-slate-900 dark:to-slate-800/80 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700/80 pb-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 px-2.5 py-0.5 rounded-full">
+                          Official Director Photo
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                          Auto 600×600 px • WebP/JPG/PNG • Max 5 MB
+                        </span>
+                      </div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white mt-1">
+                        Director Official Portrait Management
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Upload, crop, replace, or remove the Managing Director's official executive portrait.
+                      </p>
+                    </div>
+
+                    {formData.photoUrl && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEnlargedPhotoOpen(true)}
+                          className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        >
+                          <Maximize2 className="w-3.5 h-3.5 text-blue-600" /> Full Preview
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          disabled={isUploadingPhoto}
+                          className="px-3 py-1.5 bg-red-50 dark:bg-red-950/50 hover:bg-red-100 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remove
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  {formData.photoUrl && (
-                    <div className="mt-2 flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                      <img src={formData.photoUrl} alt="Preview" className="w-12 h-14 object-cover rounded-lg" />
-                      <span className="text-[10px] text-slate-500">Image Preview Active</span>
+
+                  {uploadError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-950/60 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800 rounded-2xl text-xs font-semibold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                      <span>{uploadError}</span>
                     </div>
                   )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    {/* Current Photo Preview Card */}
+                    <div className="md:col-span-5 flex flex-col items-center">
+                      <div className="relative group w-48 h-56 sm:w-56 sm:h-64 rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-md transition-all">
+                        {formData.photoUrl ? (
+                          <>
+                            <img
+                              src={formData.photoUrl}
+                              alt="Director Portrait"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                target.src = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-2 p-4">
+                              <button
+                                type="button"
+                                onClick={() => setEnlargedPhotoOpen(true)}
+                                className="px-3.5 py-1.5 bg-white text-slate-900 text-xs font-extrabold rounded-xl shadow flex items-center gap-1 hover:bg-slate-100 cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-blue-600" /> View Large
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="px-3.5 py-1.5 bg-blue-600 text-white text-xs font-extrabold rounded-xl shadow flex items-center gap-1 hover:bg-blue-700 cursor-pointer"
+                              >
+                                <Camera className="w-3.5 h-3.5" /> Replace Photo
+                              </button>
+                            </div>
+                            <span className="absolute top-2.5 right-2.5 bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Photo Active
+                            </span>
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-6 text-center space-y-2">
+                            <div className="p-3 bg-slate-200 dark:bg-slate-700 rounded-full">
+                              <Camera className="w-8 h-8 text-slate-500" />
+                            </div>
+                            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">No Photo Uploaded</p>
+                            <p className="text-[10px] text-slate-400">Click Browse or Drop file on the right to add image</p>
+                          </div>
+                        )}
+                      </div>
+                      {formData.photoUrl && (
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-2">
+                          Current Image Loaded & Synchronized
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Drag & Drop Upload Zone */}
+                    <div className="md:col-span-7 space-y-4">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            handleFileSelect(e.target.files[0]);
+                            e.target.value = '';
+                          }
+                        }}
+                        accept="image/png, image/jpeg, image/jpg, image/webp"
+                        className="hidden"
+                      />
+
+                      <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`p-6 rounded-2xl border-2 border-dashed transition-all text-center cursor-pointer flex flex-col items-center justify-center space-y-3 ${
+                          isDragOver
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/50 scale-[1.01]'
+                            : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 bg-white dark:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                          <Upload className="w-6 h-6 animate-pulse" />
+                        </div>
+
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">
+                            {formData.photoUrl ? 'Drag & Drop New Photo to Replace' : 'Drag & Drop Director Photo Here'}
+                          </h4>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            or click to <span className="text-blue-600 dark:text-blue-400 font-bold underline">browse files</span> from your device
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] text-slate-400 font-semibold">
+                          <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700/80 rounded-md">WebP, JPG, JPEG, PNG</span>
+                          <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700/80 rounded-md">Max Size: 5 MB</span>
+                          <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700/80 rounded-md">Auto Resize: 600×600 px</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingPhoto}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold shadow transition flex items-center gap-2 cursor-pointer"
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span>{formData.photoUrl ? 'Replace Photo' : 'Upload Director Photo'}</span>
+                        </button>
+
+                        {formData.photoUrl && (
+                          <button
+                            type="button"
+                            onClick={handleRemovePhoto}
+                            disabled={isUploadingPhoto}
+                            className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-red-100 hover:text-red-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                            <span>Delete Photo</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <ul className="text-[10px] text-slate-500 dark:text-slate-400 space-y-1 pt-2 border-t border-slate-200 dark:border-slate-700/60">
+                        <li className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Access restricted to Super Admin and Institute Admin roles.
+                        </li>
+                        <li className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Automatic image compression & format check ensures fast page loading speed.
+                        </li>
+                        <li className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Every photo upload, replacement, and deletion is recorded in audit logs.
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Digital Signature URL */}
@@ -583,7 +938,7 @@ export const AdminDirectorsDeskModule: React.FC<AdminDirectorsDeskModuleProps> =
                     type="text"
                     value={formData.seo?.metaKeywords || ''}
                     onChange={(e) => handleSEOChange('metaKeywords', e.target.value)}
-                    placeholder="Director, Pearl Academy, Er Rajeshwar Bisan..."
+                    placeholder="Director, Pearl Academy, Mr. Bisan Kanarzee..."
                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl text-xs"
                   />
                 </div>
@@ -594,7 +949,7 @@ export const AdminDirectorsDeskModule: React.FC<AdminDirectorsDeskModuleProps> =
                     type="text"
                     value={formData.seo?.altText || ''}
                     onChange={(e) => handleSEOChange('altText', e.target.value)}
-                    placeholder="Er. Rajeshwar Bisan - Director"
+                    placeholder="Mr. Bisan Kanarzee - Director"
                     className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl text-xs"
                   />
                 </div>
@@ -687,6 +1042,194 @@ export const AdminDirectorsDeskModule: React.FC<AdminDirectorsDeskModuleProps> =
               >
                 Looks Good! Publish to Live Site
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INTERACTIVE CROP & OPTIMIZE MODAL */}
+      {cropModalOpen && rawImageSrc && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 space-y-6 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-50 dark:bg-blue-950 text-blue-600 rounded-xl">
+                  <Crop className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Crop & Prepare Director Photo
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Auto-resizes to recommended 600 × 600 px with WebP compression.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCropModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Live Interactive Preview Canvas / Container */}
+            <div className="flex flex-col items-center space-y-4">
+              <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-2xl overflow-hidden border-2 border-blue-500 shadow-xl bg-slate-900 flex items-center justify-center">
+                <img
+                  src={rawImageSrc}
+                  alt="Raw Preview"
+                  style={{
+                    transform: `scale(${cropZoom}) rotate(${cropRotation}deg)`,
+                    transition: 'transform 0.15s ease-out'
+                  }}
+                  className="max-w-none max-h-none object-cover"
+                />
+                {/* Square Crop Overlay Lines */}
+                <div className="absolute inset-0 border-2 border-dashed border-white/60 pointer-events-none rounded-2xl"></div>
+                <span className="absolute bottom-2 right-2 bg-slate-950/80 text-white text-[9px] font-mono px-2 py-0.5 rounded-full">
+                  600 × 600 px Target
+                </span>
+              </div>
+
+              {/* Cropping Adjustment Controls */}
+              <div className="w-full bg-slate-50 dark:bg-slate-800/80 p-4 rounded-2xl space-y-3 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <span className="flex items-center gap-1">
+                    <ZoomIn className="w-4 h-4 text-blue-600" /> Zoom Level ({cropZoom.toFixed(1)}x)
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCropZoom(prev => Math.max(0.5, prev - 0.1))}
+                      className="p-1.5 bg-white dark:bg-slate-700 rounded-lg hover:bg-slate-100 shadow-sm"
+                      title="Zoom Out"
+                    >
+                      <ZoomOut className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCropZoom(prev => Math.min(2.5, prev + 0.1))}
+                      className="p-1.5 bg-white dark:bg-slate-700 rounded-lg hover:bg-slate-100 shadow-sm"
+                      title="Zoom In"
+                    >
+                      <ZoomIn className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCropRotation(prev => (prev + 90) % 360)}
+                      className="p-1.5 bg-white dark:bg-slate-700 rounded-lg hover:bg-slate-100 shadow-sm flex items-center gap-1 text-[11px]"
+                      title="Rotate 90 deg"
+                    >
+                      <RotateCw className="w-3.5 h-3.5" /> Rotate
+                    </button>
+                  </div>
+                </div>
+
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.5"
+                  step="0.05"
+                  value={cropZoom}
+                  onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                  className="w-full accent-blue-600 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setCropModalOpen(false)}
+                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={applyCropAndProcess}
+                disabled={isUploadingPhoto}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs cursor-pointer shadow-lg transition flex items-center gap-2"
+              >
+                {isUploadingPhoto ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Compressing & Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Crop & Save Photo</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULL-RES ENLARGED PHOTO PREVIEW MODAL */}
+      {enlargedPhotoOpen && formData.photoUrl && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Official Profile Image
+                </span>
+                <h3 className="text-base font-black text-slate-900 dark:text-white mt-1">
+                  {formData.name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEnlargedPhotoOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative w-full h-80 sm:h-96 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 flex items-center justify-center shadow-inner">
+              <img
+                src={formData.photoUrl}
+                alt={formData.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  target.src = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800';
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                {formData.designation}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEnlargedPhotoOpen(false);
+                    fileInputRef.current?.click();
+                  }}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Replace Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEnlargedPhotoOpen(false)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

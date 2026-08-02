@@ -211,8 +211,8 @@ let auditLogsStore: AuditLog[] = [
 
 let directorsDeskStore: DirectorDeskData = {
   id: 'dir-desk-1',
-  photoUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800',
-  name: 'Er. Rajeshwar Bisan',
+  photoUrl: 'https://linkinseconds.com/p/whatsapp-image-2026-08-02-at-13-34-25-1',
+  name: 'Mr. Bisan Kanarzee',
   designation: 'Managing Director & Founder',
   qualification: 'M.Tech (Computer Science), Ex-IT Consultant & Senior Educationist',
   welcomeMessage: `<p>Welcome to <strong>Pearl Computer & Target Academy</strong>, your premier destination for career-defining computer education and civil service competitive exam coaching in Madhya Pradesh.</p><p>Since our founding in 2012 in Indore and Chhindwara, our vision has been clear: to empower students with industry-relevant IT skills, ISO 9001:2015 recognized diplomas, and disciplined coaching for MPPSC, Patwari, SSC, and Govt examinations.</p><p>Equipped with state-of-the-art practical computer labs and led by veteran M.Tech engineers, Chartered Accountants, and subject matter experts, we ensure every student gains real-world confidence and 100% placement assistance.</p>`,
@@ -232,11 +232,11 @@ let directorsDeskStore: DirectorDeskData = {
   isPublished: true,
   seo: {
     seoTitle: 'Director\'s Desk - Pearl Computer & Target Academy',
-    metaDescription: 'Read the inspirational welcome message, vision, and mission from Er. Rajeshwar Bisan, Managing Director of Pearl Computer & Target Academy.',
-    metaKeywords: 'Director Message, Pearl Computer, Target Academy, Er. Rajeshwar Bisan, Institute Vision, Indore, M.P.',
+    metaDescription: 'Read the inspirational welcome message, vision, and mission from Mr. Bisan Kanarzee, Managing Director of Pearl Computer & Target Academy.',
+    metaKeywords: 'Director Message, Pearl Computer, Target Academy, Mr. Bisan Kanarzee, Institute Vision, Indore, M.P.',
     slug: 'directors-desk',
-    ogImage: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800',
-    altText: 'Er. Rajeshwar Bisan - Director Pearl Academy'
+    ogImage: 'https://linkinseconds.com/p/whatsapp-image-2026-08-02-at-13-34-25-1',
+    altText: 'Mr. Bisan Kanarzee - Director Pearl Academy'
   },
   updatedAt: new Date().toISOString(),
   updatedBy: 'System Administrator'
@@ -621,6 +621,84 @@ async function startServer() {
       message: 'Director\'s Desk details updated successfully!',
       data: directorsDeskStore,
       history: directorsDeskHistoryStore
+    });
+  });
+
+  // Admin POST Endpoint: Secure Upload / Replace Director Photo
+  app.post('/api/admin/directors-desk/upload-photo', checkAdminRbac, (req, res) => {
+    const { imageBase64, fileName, action } = req.body;
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      res.status(400).json({ success: false, message: 'Invalid or missing image file.' });
+      return;
+    }
+
+    // Security validation: verify allowed image mime header or valid http image url
+    const isBase64Image = /^data:image\/(webp|jpeg|jpg|png);base64,/.test(imageBase64);
+    const isDirectUrl = /^https?:\/\/.+/.test(imageBase64);
+
+    if (!isBase64Image && !isDirectUrl) {
+      res.status(400).json({
+        success: false,
+        message: 'Security Restriction: Only valid WebP, JPG, JPEG, and PNG image files are permitted. Executable or malicious files are strictly blocked.'
+      });
+      return;
+    }
+
+    // File size check (~5MB limit)
+    const approximateSizeBytes = imageBase64.length * 0.75;
+    if (approximateSizeBytes > 5.5 * 1024 * 1024) {
+      res.status(400).json({
+        success: false,
+        message: 'File size exceeds the 5 MB maximum limit.'
+      });
+      return;
+    }
+
+    // Update in-memory database store
+    directorsDeskStore.photoUrl = imageBase64;
+    directorsDeskStore.updatedAt = new Date().toISOString();
+    directorsDeskStore.updatedBy = editorName;
+
+    const auditAction = action === 'replace' ? 'Replaced Director Photo' : 'Uploaded Director Photo';
+    addAuditLog(
+      editorName,
+      'admin',
+      auditAction,
+      req.ip || '127.0.0.1',
+      `${auditAction} for ${directorsDeskStore.name} (${fileName || 'director_photo.webp'})`
+    );
+
+    res.json({
+      success: true,
+      message: `${auditAction} successfully!`,
+      photoUrl: directorsDeskStore.photoUrl,
+      data: directorsDeskStore
+    });
+  });
+
+  // Admin DELETE Endpoint: Remove / Clear Director Photo
+  app.delete('/api/admin/directors-desk/photo', checkAdminRbac, (req, res) => {
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    directorsDeskStore.photoUrl = '';
+    directorsDeskStore.updatedAt = new Date().toISOString();
+    directorsDeskStore.updatedBy = editorName;
+
+    addAuditLog(
+      editorName,
+      'admin',
+      'Deleted Director Photo',
+      req.ip || '127.0.0.1',
+      `Removed Director photo for ${directorsDeskStore.name}`
+    );
+
+    res.json({
+      success: true,
+      message: 'Director photo removed successfully.',
+      photoUrl: '',
+      data: directorsDeskStore
     });
   });
 
@@ -2600,7 +2678,7 @@ async function startServer() {
     {
       id: 'photo-3',
       title: 'Main Institute Entrance & Reception Desk',
-      description: 'Welcome desk and student counseling counter near Railway Station Parasia.',
+      description: 'Welcome desk and student counseling counter near Railway Station Road, Parasia.',
       url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200',
       thumbnailUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400',
       category: 'Campus',

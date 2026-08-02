@@ -49,7 +49,7 @@ export const DigitalIdCardGenerator: React.FC<DigitalIdCardGeneratorProps> = ({
     mobile: baseStudent.mobile || '9826012345',
     emergencyContact: baseStudent.emergencyContact || '9329284693',
     batch: baseStudent.batch || 'Morning 08:00 AM - 10:00 AM',
-    center: 'Near Railway Station, Railway Road, Parasia, Chhindwara',
+    center: 'Near Railway Station Road, Parasia, Chhindwara',
     issueDate: baseStudent.idCardIssueDate || '01 Aug 2026',
     validTill: baseStudent.idCardValidTill || '31 Jul 2027',
     avatar: baseStudent.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
@@ -198,7 +198,7 @@ export const DigitalIdCardGenerator: React.FC<DigitalIdCardGeneratorProps> = ({
     });
 
     doc.text('RETURN ADDRESS IF FOUND:', 3, ruleY + 2);
-    doc.text('Pearl Computer & Target Academy, Near Railway Station, Parasia, Chhindwara (M.P.) - 480441', 3, ruleY + 6, { maxWidth: width - 6 });
+    doc.text('Pearl Computer & Target Academy, Near Railway Station Road, Parasia, Chhindwara (M.P.) - 480441', 3, ruleY + 6, { maxWidth: width - 6 });
 
     doc.save(`Student_ID_${studentData.studentId}_${studentData.regNumber.replace(/\//g, '_')}.pdf`);
   };
@@ -405,7 +405,7 @@ export const DigitalIdCardGenerator: React.FC<DigitalIdCardGeneratorProps> = ({
                   <h4 className="font-bold text-slate-900 text-[11px]">Institute Contact & Return Address:</h4>
                   <p className="text-[10px] text-slate-500 mt-0.5">
                     Pearl Computer & Target Academy<br />
-                    Near Railway Station, Railway Road, Parasia, Chhindwara (M.P.) - 480441<br />
+                    Near Railway Station Road, Parasia, Chhindwara (M.P.) - 480441<br />
                     Helpline: +91 79998-29231 / +91 93292-84693
                   </p>
                 </div>

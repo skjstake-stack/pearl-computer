@@ -5,7 +5,7 @@ import { UserSession } from '../types';
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  portalType: 'student' | 'faculty' | 'admin';
+  portalType: 'student' | 'faculty' | 'admin' | 'center';
   onLoginSuccess: (user: UserSession, studentDetails?: any) => void;
 }
 
@@ -15,7 +15,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   portalType,
   onLoginSuccess
 }) => {
-  const [activePortal, setActivePortal] = useState<'student' | 'faculty' | 'admin'>(portalType);
+  const [activePortal, setActivePortal] = useState<'student' | 'faculty' | 'admin' | 'center'>(portalType);
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,7 +74,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  const handleFillDemo = (type: 'student' | 'faculty' | 'admin') => {
+  const handleFillDemo = (type: 'student' | 'faculty' | 'admin' | 'center') => {
     setActivePortal(type);
     if (type === 'student') {
       setUsernameOrEmail('STU-2026-101');
@@ -82,6 +82,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     } else if (type === 'faculty') {
       setUsernameOrEmail('rksharma');
       setPassword('Pass@2026');
+    } else if (type === 'center') {
+      setUsernameOrEmail('CTR-101');
+      setPassword('CenterPass@2026');
     } else {
       setUsernameOrEmail('admin');
       setPassword('Admin@12345');
@@ -171,30 +174,42 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </div>
 
           {/* Portal Tabs */}
-          <div className="mt-4 grid grid-cols-3 gap-1 bg-blue-950/60 p-1 rounded-xl text-[11px] font-semibold text-center">
+          <div className="mt-4 grid grid-cols-4 gap-1 bg-blue-950/60 p-1 rounded-xl text-[10px] font-semibold text-center">
             <button
+              type="button"
               onClick={() => handleFillDemo('student')}
               className={`py-1.5 rounded-lg transition-colors cursor-pointer ${
-                activePortal === 'student' ? 'bg-orange-500 text-white' : 'text-blue-300 hover:text-white'
+                activePortal === 'student' ? 'bg-orange-500 text-white font-bold' : 'text-blue-300 hover:text-white'
               }`}
             >
               Student
             </button>
             <button
+              type="button"
+              onClick={() => handleFillDemo('center')}
+              className={`py-1.5 rounded-lg transition-colors cursor-pointer ${
+                activePortal === 'center' ? 'bg-orange-500 text-white font-bold' : 'text-blue-300 hover:text-white'
+              }`}
+            >
+              Center
+            </button>
+            <button
+              type="button"
               onClick={() => handleFillDemo('faculty')}
               className={`py-1.5 rounded-lg transition-colors cursor-pointer ${
-                activePortal === 'faculty' ? 'bg-orange-500 text-white' : 'text-blue-300 hover:text-white'
+                activePortal === 'faculty' ? 'bg-orange-500 text-white font-bold' : 'text-blue-300 hover:text-white'
               }`}
             >
               Faculty
             </button>
             <button
+              type="button"
               onClick={() => handleFillDemo('admin')}
               className={`py-1.5 rounded-lg transition-colors cursor-pointer ${
-                activePortal === 'admin' ? 'bg-orange-500 text-white' : 'text-blue-300 hover:text-white'
+                activePortal === 'admin' ? 'bg-orange-500 text-white font-bold' : 'text-blue-300 hover:text-white'
               }`}
             >
-              Admin
+              Director
             </button>
           </div>
         </div>
@@ -234,9 +249,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                   {activePortal === 'student'
                     ? 'Student ID / Registration No / Mobile / Username'
+                    : activePortal === 'center'
+                    ? 'Center ID / Username / Registered Email / Mobile'
                     : activePortal === 'faculty'
                     ? 'Faculty Employee ID / Email / Username'
-                    : 'Admin Username / Email'}
+                    : 'Director Username / Email'}
                 </label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
@@ -285,25 +302,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 disabled={isSubmitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs transition-colors cursor-pointer shadow-md"
               >
-                {isSubmitting ? 'Authenticating...' : `Log In to ${activePortal.toUpperCase()} Portal`}
+                {isSubmitting
+                  ? 'Authenticating...'
+                  : activePortal === 'admin'
+                  ? 'Log In to Director Portal'
+                  : `Log In to ${activePortal.toUpperCase()} Portal`}
               </button>
 
-              {/* Demo Credentials Quick Fill Box */}
-              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
-                <div className="font-bold text-slate-800 dark:text-white flex items-center justify-between">
-                  <span>Demo Access Quick Credentials:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleFillDemo(activePortal)}
-                    className="text-blue-600 underline font-semibold"
-                  >
-                    Auto Fill
-                  </button>
-                </div>
-                {activePortal === 'student' && <p>ID: STU-2026-101 | Pass: Pass@2026#Rahul</p>}
-                {activePortal === 'faculty' && <p>User: rksharma | Pass: Pass@2026</p>}
-                {activePortal === 'admin' && <p>User: admin | Pass: Admin@12345</p>}
-              </div>
+
             </form>
           ) : (
             <div className="space-y-4 text-xs">

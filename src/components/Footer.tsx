@@ -8,9 +8,11 @@ import {
   Twitter,
   Instagram,
   Youtube,
+  Linkedin,
   Send,
   Heart,
-  CheckCircle2
+  CheckCircle2,
+  Share2
 } from 'lucide-react';
 import { QuickNavItem } from '../types';
 
@@ -72,7 +74,64 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateTab, onOpenAdmissionMo
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-orange-400 shrink-0" />
-                <span>Main Branch: Near Railway Station, Railway Road, Parasia, Tehsil - Parasia, District - Chhindwara, Madhya Pradesh 480441</span>
+                <span>Main Branch: Near Railway Station Road, Parasia, Tehsil - Parasia, District - Chhindwara, Madhya Pradesh 480441</span>
+              </div>
+            </div>
+
+            {/* Social Media Links under Brand */}
+            <div className="pt-2 space-y-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Follow Us On Social Media</span>
+              <div className="flex items-center gap-2.5">
+                <a
+                  href="https://instagram.com/pearlcomputeracademy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram - Pearl Computer & Target Academy"
+                  className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-gradient-to-tr hover:from-amber-500 hover:via-rose-500 hover:to-purple-600 hover:border-rose-400 transition-all flex items-center justify-center cursor-pointer shadow-sm group"
+                  title="Instagram"
+                >
+                  <Instagram className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                </a>
+                <a
+                  href="https://facebook.com/pearlcomputeracademy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook - Pearl Computer & Target Academy"
+                  className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-blue-600 hover:border-blue-500 transition-all flex items-center justify-center cursor-pointer shadow-sm group"
+                  title="Facebook"
+                >
+                  <Facebook className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                </a>
+                <a
+                  href="https://linkedin.com/company/pearlcomputeracademy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="LinkedIn - Pearl Computer & Target Academy"
+                  className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-sky-600 hover:border-sky-500 transition-all flex items-center justify-center cursor-pointer shadow-sm group"
+                  title="LinkedIn"
+                >
+                  <Linkedin className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                </a>
+                <a
+                  href="https://youtube.com/@pearlcomputeracademy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="YouTube - Pearl Computer & Target Academy"
+                  className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-red-600 hover:border-red-500 transition-all flex items-center justify-center cursor-pointer shadow-sm group"
+                  title="YouTube"
+                >
+                  <Youtube className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                </a>
+                <a
+                  href="https://twitter.com/pearlacademy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Twitter - Pearl Computer & Target Academy"
+                  className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-500 transition-all flex items-center justify-center cursor-pointer shadow-sm group"
+                  title="Twitter (X)"
+                >
+                  <Twitter className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                </a>
               </div>
             </div>
           </div>
@@ -148,6 +207,61 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateTab, onOpenAdmissionMo
                 <Send className="w-3.5 h-3.5" /> Subscribe
               </button>
             </form>
+          </div>
+        </div>
+
+        {/* Social Media Highlight Bar */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800/80">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
+              <Share2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h5 className="text-xs font-extrabold text-white uppercase tracking-wider">Connect With Pearl Academy</h5>
+              <p className="text-[11px] text-slate-400">Join our official social channels for daily batch updates, study tips & notifications</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <a
+              href="https://instagram.com/pearlcomputeracademy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 bg-slate-950 hover:bg-gradient-to-r hover:from-purple-600 hover:to-pink-600 border border-slate-800 hover:border-pink-500 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm"
+            >
+              <Instagram className="w-4 h-4 text-pink-500 shrink-0" />
+              <span>Instagram</span>
+            </a>
+
+            <a
+              href="https://facebook.com/pearlcomputeracademy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 bg-slate-950 hover:bg-blue-600 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm"
+            >
+              <Facebook className="w-4 h-4 text-blue-500 shrink-0" />
+              <span>Facebook</span>
+            </a>
+
+            <a
+              href="https://linkedin.com/company/pearlcomputeracademy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 bg-slate-950 hover:bg-sky-600 border border-slate-800 hover:border-sky-500 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm"
+            >
+              <Linkedin className="w-4 h-4 text-sky-400 shrink-0" />
+              <span>LinkedIn</span>
+            </a>
+
+            <a
+              href="https://youtube.com/@pearlcomputeracademy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 bg-slate-950 hover:bg-red-600 border border-slate-800 hover:border-red-500 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm"
+            >
+              <Youtube className="w-4 h-4 text-red-500 shrink-0" />
+              <span>YouTube</span>
+            </a>
           </div>
         </div>
 

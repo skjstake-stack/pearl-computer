@@ -4,8 +4,10 @@ import { StudentManagementModule } from './StudentManagementModule';
 import { AdminGalleryModule } from './AdminGalleryModule';
 import { AdminCourseModule } from './AdminCourseModule';
 import { AdminDirectorsDeskModule } from './AdminDirectorsDeskModule';
+import { AdminCenterManagementModule } from './AdminCenterManagementModule';
 import {
   ShieldAlert,
+  Building2,
   Users,
   UserCheck,
   FileText,
@@ -47,7 +49,7 @@ interface AdminPanelDashboardProps {
 }
 
 export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ currentUser, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'courses' | 'admissions' | 'students' | 'faculty' | 'idcard' | 'emailSettings' | 'auditLogs' | 'gallery' | 'directorsDesk'>('directorsDesk');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'courses' | 'admissions' | 'students' | 'faculty' | 'centers' | 'idcard' | 'emailSettings' | 'auditLogs' | 'gallery' | 'directorsDesk'>('directorsDesk');
 
   // Server Data Stores
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);
@@ -504,6 +506,15 @@ export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ curren
           </button>
 
           <button
+            onClick={() => setActiveTab('centers')}
+            className={`pb-3 border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'centers' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-extrabold' : 'text-slate-500'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-indigo-500" /> Center Management (RBAC)
+          </button>
+
+          <button
             onClick={() => setActiveTab('idcard')}
             className={`pb-3 border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'idcard' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500'
@@ -555,6 +566,11 @@ export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ curren
             userRole={currentUser?.role || 'admin'}
             userName={currentUser?.name || 'Institute Admin'}
           />
+        )}
+
+        {/* CENTER MANAGEMENT TAB */}
+        {activeTab === 'centers' && (
+          <AdminCenterManagementModule />
         )}
 
         {/* 1. COURSE CATALOG MANAGER TAB */}

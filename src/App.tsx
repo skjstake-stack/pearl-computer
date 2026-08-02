@@ -8,12 +8,12 @@ import { OnlineAdmissionModal } from './components/OnlineAdmissionModal';
 import { LoginModal } from './components/LoginModal';
 import { StudentPortalDashboard } from './components/StudentPortalDashboard';
 import { FacultyPortalDashboard } from './components/FacultyPortalDashboard';
+import { CenterPortalDashboard } from './components/CenterPortalDashboard';
 import { AdminPanelDashboard } from './components/AdminPanelDashboard';
 import { AIChatAssistant } from './components/AIChatAssistant';
 import { DigitalIdCardGenerator } from './components/DigitalIdCardGenerator';
 import { GalleryPage } from './components/GalleryPage';
 import { HomeGallerySection } from './components/HomeGallerySection';
-import { QuickNavigationSection } from './components/QuickNavigationSection';
 import { DirectorsDeskSection } from './components/DirectorsDeskSection';
 import { Footer } from './components/Footer';
 import { UserSession, StudentAccount } from './types';
@@ -44,7 +44,7 @@ export default function App() {
   const [admissionDefaultCourse, setAdmissionDefaultCourse] = useState<string>('');
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
-  const [loginPortalType, setLoginPortalType] = useState<'student' | 'faculty' | 'admin'>('student');
+  const [loginPortalType, setLoginPortalType] = useState<'student' | 'faculty' | 'admin' | 'center'>('student');
 
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState<boolean>(false);
 
@@ -68,7 +68,7 @@ export default function App() {
     setIsAdmissionModalOpen(true);
   };
 
-  const handleOpenLogin = (portal: 'student' | 'faculty' | 'admin') => {
+  const handleOpenLogin = (portal: 'student' | 'faculty' | 'admin' | 'center') => {
     setLoginPortalType(portal);
     setIsLoginModalOpen(true);
   };
@@ -79,6 +79,7 @@ export default function App() {
 
     if (user.role === 'student') setActiveTab('student-portal');
     else if (user.role === 'faculty') setActiveTab('faculty-portal');
+    else if (user.role === 'center') setActiveTab('center-portal');
     else setActiveTab('admin-panel');
   };
 
@@ -133,13 +134,6 @@ export default function App() {
               onOpenAdmissionModal={() => handleOpenAdmission()}
               onNavigateTab={(tab) => setActiveTab(tab)}
               onSearchCourse={(query) => setSelectedCourseQuery(query)}
-            />
-
-            {/* Quick Navigation Menu Section */}
-            <QuickNavigationSection
-              onNavigateTab={(tab) => setActiveTab(tab)}
-              onOpenAdmissionModal={() => handleOpenAdmission()}
-              activeTab={activeTab}
             />
 
             {/* Why Choose Us */}
@@ -353,7 +347,7 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-4 text-xs">
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white">Main Branch Address</h3>
-                <p>Near Railway Station, Railway Road Parasia, Tehsil - Parasia, District - Chhindwara, Madhya Pradesh 480441</p>
+                <p>Near Railway Station Road, Parasia, Tehsil - Parasia, District - Chhindwara, Madhya Pradesh 480441</p>
                 <p><strong>Phone:</strong> +91 79998-29231 / +91 93292-84693</p>
                 <p><strong>Email:</strong> bisan9329284693@gmail.com</p>
               </div>
@@ -388,7 +382,12 @@ export default function App() {
           <FacultyPortalDashboard currentUser={currentUser} onLogout={handleLogout} />
         )}
 
-        {/* 10. ADMIN PANEL DASHBOARD */}
+        {/* 10. CENTER PORTAL DASHBOARD */}
+        {activeTab === 'center-portal' && currentUser && currentUser.role === 'center' && (
+          <CenterPortalDashboard currentUser={currentUser} onLogout={handleLogout} />
+        )}
+
+        {/* 11. ADMIN PANEL DASHBOARD */}
         {activeTab === 'admin-panel' && currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin') && (
           <AdminPanelDashboard currentUser={currentUser} onLogout={handleLogout} />
         )}

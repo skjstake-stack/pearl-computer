@@ -107,9 +107,16 @@ export const DirectorsDeskSection: React.FC<DirectorsDeskSectionProps> = ({
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-orange-500 rounded-3xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
                 <img
-                  src={data.photoUrl || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800'}
+                  src={data.photoUrl || 'https://linkinseconds.com/p/whatsapp-image-2026-08-02-at-13-34-25-1'}
                   alt={data.seo?.altText || data.name}
                   loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (target.src !== 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800') {
+                      target.src = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800';
+                    }
+                  }}
                   className="relative w-64 h-80 sm:w-72 sm:h-96 object-cover rounded-2xl shadow-lg border-2 border-white dark:border-slate-700"
                 />
                 {data.isPublished && (

@@ -34,7 +34,7 @@ interface NavbarProps {
   currentUser: UserSession | null;
   onLogout: () => void;
   onOpenAiAssistant: () => void;
-  onOpenLoginModal: (portal: 'student' | 'faculty' | 'admin') => void;
+  onOpenLoginModal: (portal: 'student' | 'faculty' | 'admin' | 'center') => void;
   onOpenAdmissionModal: () => void;
 }
 
@@ -95,12 +95,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const mainNavItems = [
     { id: 'home', label: 'Home' },
-    { id: 'courses', label: 'Courses' },
-    { id: 'verification', label: 'Verify Certificate' },
-    { id: 'results', label: 'Exam Results' },
-    { id: 'mocktest', label: 'Practice Tests' },
     { id: 'about', label: 'About Us' },
-    { id: 'contact', label: 'Contact' }
+    { id: 'courses', label: 'Courses' },
+    { id: 'admission', label: 'Admissions' },
+    { id: 'gallery', label: 'Gallery' },
+    { id: 'contact', label: 'Contact Us' }
   ];
 
   return (
@@ -119,7 +118,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
             <span className="flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-orange-400" />
-              Main Branch: Near Railway Station, Parasia, Chhindwara (M.P.) - 480441
+              Main Branch: Near Railway Station Road, Parasia, Chhindwara (M.P.) - 480441
             </span>
           </div>
 
@@ -168,57 +167,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center space-x-1">
-            {/* Quick Navigation Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setQuickNavDropdownOpen(!quickNavDropdownOpen)}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-950 transition-colors cursor-pointer"
-              >
-                <Compass className="w-4 h-4 text-orange-500" />
-                <span>Quick Nav</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${quickNavDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {quickNavDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-72 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-3 z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="px-4 pb-2 border-b border-slate-100 dark:border-slate-700/60 mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Quick Navigation Menu
-                    </span>
-                  </div>
-                  {quickNavItems
-                    .filter(i => i.showDesktop !== false)
-                    .map((item) => {
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => handleNavClick(item)}
-                          className="w-full text-left px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-950/60 transition-colors flex items-start gap-3 group cursor-pointer"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                            {renderNavIcon(item.icon, "w-4 h-4 text-blue-600 dark:text-blue-400 group-hover:text-white")}
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                              {item.title}
-                            </div>
-                            <div className="text-[10px] text-slate-400 leading-snug">
-                              {item.description || item.badge || 'Quick Access Link'}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-
             {mainNavItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => {
+                    if (item.id === 'admission') {
+                      onOpenAdmissionModal();
+                    } else {
+                      setActiveTab(item.id);
+                    }
+                  }}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                     isActive
                       ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold'
@@ -268,7 +228,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       ? 'Student Zone'
                       : currentUser.role === 'faculty'
                       ? 'Faculty Portal'
-                      : 'Admin Panel'}
+                      : 'Director Panel'}
                   </span>
                 </button>
 
@@ -305,6 +265,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <button
                       onClick={() => {
                         setPortalDropdownOpen(false);
+                        onOpenLoginModal('center');
+                      }}
+                      className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950 flex items-center gap-2"
+                    >
+                      <LucideIcons.Building2 className="w-4 h-4 text-indigo-600" />
+                      Center Login
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPortalDropdownOpen(false);
                         onOpenLoginModal('faculty');
                       }}
                       className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950 flex items-center gap-2"
@@ -320,7 +290,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950 flex items-center gap-2 border-t border-slate-100 dark:border-slate-700"
                     >
                       <ShieldAlert className="w-4 h-4 text-emerald-600" />
-                      Admin Panel
+                      Director Login
                     </button>
                   </div>
                 )}
@@ -410,13 +380,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-2">
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-800 grid grid-cols-3 gap-2">
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
                 onOpenAdmissionModal();
               }}
-              className="bg-orange-500 text-white py-2.5 rounded-lg text-xs font-bold text-center col-span-2"
+              className="bg-orange-500 text-white py-2.5 rounded-lg text-xs font-bold text-center col-span-3"
             >
               Online Admission Form
             </button>
@@ -426,9 +396,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setMobileMenuOpen(false);
                 onOpenLoginModal('student');
               }}
-              className="border border-blue-600 text-blue-600 py-2 rounded-lg text-xs font-semibold"
+              className="border border-blue-600 text-blue-600 py-2 rounded-lg text-[11px] font-semibold text-center"
             >
-              Student Login
+              Student
             </button>
 
             <button
@@ -436,9 +406,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setMobileMenuOpen(false);
                 onOpenLoginModal('faculty');
               }}
-              className="border border-slate-300 text-slate-700 dark:text-slate-200 py-2 rounded-lg text-xs font-semibold"
+              className="border border-slate-300 text-slate-700 dark:text-slate-200 py-2 rounded-lg text-[11px] font-semibold text-center"
             >
-              Faculty Login
+              Faculty
+            </button>
+
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenLoginModal('admin');
+              }}
+              className="border border-emerald-600 text-emerald-600 dark:text-emerald-400 py-2 rounded-lg text-[11px] font-bold text-center"
+            >
+              Director
             </button>
           </div>
 
@@ -447,7 +427,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Phone className="w-3.5 h-3.5 text-orange-500" /> Helpline: +91 79998-29231 / +91 93292-84693
             </span>
             <span className="text-[10px] text-slate-500">
-              Near Railway Station, Railway Road, Parasia, District - Chhindwara (M.P.) - 480441
+              Near Railway Station Road, Parasia, District - Chhindwara (M.P.) - 480441
             </span>
           </div>
         </div>
