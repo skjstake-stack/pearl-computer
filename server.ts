@@ -40,7 +40,6 @@ dotenv.config();
 
 const __dirname = process.cwd();
 
-
 // In-Memory Database Store
 let emailSettingsStore: EmailSettings = { ...initialEmailSettings };
 let applicationsStore: AdmissionApplication[] = [...sampleApplications];
@@ -573,180 +572,6 @@ async function startServer() {
     });
   });
 
-  // Admin GET Endpoint: Fetch Director's Desk Data & History
-  app.get('/api/admin/directors-desk', checkAdminRbac, (req, res) => {
-    res.json({
-      success: true,
-      data: directorsDeskStore,
-      history: directorsDeskHistoryStore
-    });
-  });
-
-  // Admin POST Endpoint: Update / Publish Director's Desk Data
-  app.post('/api/admin/directors-desk', checkAdminRbac, (req, res) => {
-    const updateData = req.body;
-    const editorName = updateData.updatedBy || req.headers['x-user-name'] || 'Institute Admin';
-
-    // Save previous version to history before updating
-    const previousVersion: DirectorVersionHistory = {
-      id: `ver-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      updatedBy: directorsDeskStore.updatedBy || 'Previous Update',
-      note: updateData.changeNote || `Updated by ${editorName}`,
-      data: { ...directorsDeskStore }
-    };
-    directorsDeskHistoryStore.unshift(previousVersion);
-    if (directorsDeskHistoryStore.length > 20) {
-      directorsDeskHistoryStore.pop(); // Keep last 20 versions
-    }
-
-    // Merge update
-    directorsDeskStore = {
-      ...directorsDeskStore,
-      ...updateData,
-      updatedAt: new Date().toISOString(),
-      updatedBy: editorName
-    };
-
-    addAuditLog(
-      editorName,
-      'admin',
-      'Updated Director\'s Desk',
-      req.ip || '127.0.0.1',
-      `Updated Director's Desk details for ${directorsDeskStore.name} (Status: ${directorsDeskStore.isPublished ? 'Published' : 'Draft/Unpublished'})`
-    );
-
-    res.json({
-      success: true,
-      message: 'Director\'s Desk details updated successfully!',
-      data: directorsDeskStore,
-      history: directorsDeskHistoryStore
-    });
-  });
-
-  // Admin POST Endpoint: Secure Upload / Replace Director Photo
-  app.post('/api/admin/directors-desk/upload-photo', checkAdminRbac, (req, res) => {
-    const { imageBase64, fileName, action } = req.body;
-    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
-
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      res.status(400).json({ success: false, message: 'Invalid or missing image file.' });
-      return;
-    }
-
-    // Security validation: verify allowed image mime header or valid http image url
-    const isBase64Image = /^data:image\/(webp|jpeg|jpg|png);base64,/.test(imageBase64);
-    const isDirectUrl = /^https?:\/\/.+/.test(imageBase64);
-
-    if (!isBase64Image && !isDirectUrl) {
-      res.status(400).json({
-        success: false,
-        message: 'Security Restriction: Only valid WebP, JPG, JPEG, and PNG image files are permitted. Executable or malicious files are strictly blocked.'
-      });
-      return;
-    }
-
-    // File size check (~5MB limit)
-    const approximateSizeBytes = imageBase64.length * 0.75;
-    if (approximateSizeBytes > 5.5 * 1024 * 1024) {
-      res.status(400).json({
-        success: false,
-        message: 'File size exceeds the 5 MB maximum limit.'
-      });
-      return;
-    }
-
-    // Update in-memory database store
-    directorsDeskStore.photoUrl = imageBase64;
-    directorsDeskStore.updatedAt = new Date().toISOString();
-    directorsDeskStore.updatedBy = editorName;
-
-    const auditAction = action === 'replace' ? 'Replaced Director Photo' : 'Uploaded Director Photo';
-    addAuditLog(
-      editorName,
-      'admin',
-      auditAction,
-      req.ip || '127.0.0.1',
-      `${auditAction} for ${directorsDeskStore.name} (${fileName || 'director_photo.webp'})`
-    );
-
-    res.json({
-      success: true,
-      message: `${auditAction} successfully!`,
-      photoUrl: directorsDeskStore.photoUrl,
-      data: directorsDeskStore
-    });
-  });
-
-  // Admin DELETE Endpoint: Remove / Clear Director Photo
-  app.delete('/api/admin/directors-desk/photo', checkAdminRbac, (req, res) => {
-    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
-
-    directorsDeskStore.photoUrl = '';
-    directorsDeskStore.updatedAt = new Date().toISOString();
-    directorsDeskStore.updatedBy = editorName;
-
-    addAuditLog(
-      editorName,
-      'admin',
-      'Deleted Director Photo',
-      req.ip || '127.0.0.1',
-      `Removed Director photo for ${directorsDeskStore.name}`
-    );
-
-    res.json({
-      success: true,
-      message: 'Director photo removed successfully.',
-      photoUrl: '',
-      data: directorsDeskStore
-    });
-  });
-
-  // Admin POST Endpoint: Restore Director's Desk Version
-  app.post('/api/admin/directors-desk/restore/:versionId', checkAdminRbac, (req, res) => {
-    const { versionId } = req.params;
-    const versionIndex = directorsDeskHistoryStore.findIndex(v => v.id === versionId);
-
-    if (versionIndex === -1) {
-      res.status(404).json({ success: false, message: 'Version history record not found.' });
-      return;
-    }
-
-    const versionToRestore = directorsDeskHistoryStore[versionIndex];
-    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
-
-    // Save current state before restoring
-    const backupVersion: DirectorVersionHistory = {
-      id: `ver-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      updatedBy: editorName,
-      note: `Pre-restore snapshot before restoring version ${versionId}`,
-      data: { ...directorsDeskStore }
-    };
-    directorsDeskHistoryStore.unshift(backupVersion);
-
-    directorsDeskStore = {
-      ...versionToRestore.data,
-      updatedAt: new Date().toISOString(),
-      updatedBy: editorName
-    };
-
-    addAuditLog(
-      editorName,
-      'admin',
-      'Restored Director\'s Desk Version',
-      req.ip || '127.0.0.1',
-      `Restored Director's Desk profile to version from ${versionToRestore.timestamp}`
-    );
-
-    res.json({
-      success: true,
-      message: `Successfully restored Director's Desk profile version from ${new Date(versionToRestore.timestamp).toLocaleDateString()}`,
-      data: directorsDeskStore,
-      history: directorsDeskHistoryStore
-    });
-  });
-
   // Public Endpoint: Return ONLY Published Courses for Website
   app.get('/api/courses', (req, res) => {
     const publishedCourses = coursesStore
@@ -764,6 +589,121 @@ async function startServer() {
     // Allow request if no header supplied for testing, but log security check
     next();
   }
+
+  // Admin GET Endpoint: Fetch Managing Director Data (Mr. Bisan Kanarzee)
+  app.get('/api/admin/managing-director', checkAdminRbac, (req, res) => {
+    res.json({
+      success: true,
+      data: directorsDeskStore
+    });
+  });
+
+  // Admin POST Endpoint: Update Managing Director Profile (NO Image URL allowed)
+  app.post('/api/admin/managing-director', checkAdminRbac, (req, res) => {
+    const updateData = req.body || {};
+    const editorName = (req.headers['x-user-name'] as string) || updateData.updatedBy || 'Institute Admin';
+
+    // Prevent image URL modification via text links
+    delete updateData.photoUrl;
+    delete updateData.imageUrl;
+
+    directorsDeskStore = {
+      ...directorsDeskStore,
+      ...updateData,
+      updatedAt: new Date().toISOString(),
+      updatedBy: editorName
+    };
+
+    addAuditLog(
+      editorName,
+      'admin',
+      'Updated Managing Director Profile',
+      req.ip || '127.0.0.1',
+      `Updated profile for ${directorsDeskStore.name} (${directorsDeskStore.designation})`
+    );
+
+    res.json({
+      success: true,
+      message: 'Managing Director profile updated successfully!',
+      data: directorsDeskStore
+    });
+  });
+
+  // Admin POST Endpoint: Secure Upload Photo for Managing Director (File Upload Only, No URL)
+  app.post('/api/admin/managing-director/upload-photo', checkAdminRbac, (req, res) => {
+    const { imageBase64, fileName, action } = req.body || {};
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      res.status(400).json({ success: false, message: 'Missing or invalid image file data.' });
+      return;
+    }
+
+    // Security validation: verify allowed image header
+    const isAllowedFormat = /^data:image\/(webp|jpeg|jpg|png);base64,/.test(imageBase64);
+    if (!isAllowedFormat) {
+      res.status(400).json({
+        success: false,
+        message: 'Security Restriction: Only valid JPG, JPEG, PNG, and WebP image files are permitted. External image links or unapproved files are strictly blocked.'
+      });
+      return;
+    }
+
+    // Size validation: ~5MB limit
+    const approximateSizeBytes = imageBase64.length * 0.75;
+    if (approximateSizeBytes > 5.5 * 1024 * 1024) {
+      res.status(400).json({
+        success: false,
+        message: 'File size exceeds the 5 MB maximum limit.'
+      });
+      return;
+    }
+
+    // Update in-memory data store with uploaded image reference
+    directorsDeskStore.photoUrl = imageBase64;
+    directorsDeskStore.updatedAt = new Date().toISOString();
+    directorsDeskStore.updatedBy = editorName;
+
+    const auditAction = action === 'replace' ? 'Replaced Managing Director Photo' : 'Uploaded Managing Director Photo';
+    addAuditLog(
+      editorName,
+      'admin',
+      auditAction,
+      req.ip || '127.0.0.1',
+      `${auditAction} for ${directorsDeskStore.name} (${fileName || 'director_photo.webp'})`
+    );
+
+    res.json({
+      success: true,
+      message: `${auditAction} successfully!`,
+      photoUrl: directorsDeskStore.photoUrl,
+      data: directorsDeskStore
+    });
+  });
+
+  // Admin DELETE Endpoint: Delete Photo for Managing Director
+  app.delete('/api/admin/managing-director/photo', checkAdminRbac, (req, res) => {
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    directorsDeskStore.photoUrl = '';
+    directorsDeskStore.updatedAt = new Date().toISOString();
+    directorsDeskStore.updatedBy = editorName;
+
+    addAuditLog(
+      editorName,
+      'admin',
+      'Deleted Managing Director Photo',
+      req.ip || '127.0.0.1',
+      `Deleted official photo for ${directorsDeskStore.name}`
+    );
+
+    res.json({
+      success: true,
+      message: 'Managing Director photo deleted successfully.',
+      photoUrl: '',
+      data: directorsDeskStore
+    });
+  });
 
   // Admin GET Endpoint: Fetch ALL Courses (Published, Draft, Unpublished, Archived)
   app.get('/api/admin/courses', checkAdminRbac, (req, res) => {

@@ -3,8 +3,8 @@ import { FacultyManagementModule } from './FacultyManagementModule';
 import { StudentManagementModule } from './StudentManagementModule';
 import { AdminGalleryModule } from './AdminGalleryModule';
 import { AdminCourseModule } from './AdminCourseModule';
-import { AdminDirectorsDeskModule } from './AdminDirectorsDeskModule';
 import { AdminCenterManagementModule } from './AdminCenterManagementModule';
+import { AdminManagingDirectorModule } from './AdminManagingDirectorModule';
 import {
   ShieldAlert,
   Building2,
@@ -49,7 +49,7 @@ interface AdminPanelDashboardProps {
 }
 
 export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ currentUser, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'courses' | 'admissions' | 'students' | 'faculty' | 'centers' | 'idcard' | 'emailSettings' | 'auditLogs' | 'gallery' | 'directorsDesk'>('directorsDesk');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'courses' | 'admissions' | 'students' | 'faculty' | 'centers' | 'idcard' | 'emailSettings' | 'auditLogs' | 'gallery' | 'managingDirector'>('courses');
 
   // Server Data Stores
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);
@@ -515,21 +515,21 @@ export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ curren
           </button>
 
           <button
+            onClick={() => setActiveTab('managingDirector')}
+            className={`pb-3 border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'managingDirector' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-extrabold' : 'text-slate-500'
+            }`}
+          >
+            <UserCheck className="w-4 h-4 text-purple-500" /> Managing Director & Founder
+          </button>
+
+          <button
             onClick={() => setActiveTab('idcard')}
             className={`pb-3 border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'idcard' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500'
             }`}
           >
             <QrCode className="w-4 h-4 text-orange-500" /> ID Card Management
-          </button>
-
-          <button
-            onClick={() => setActiveTab('directorsDesk')}
-            className={`pb-3 border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'directorsDesk' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-extrabold' : 'text-slate-500'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-orange-500" /> Director's Desk Management
           </button>
 
           <button
@@ -560,17 +560,17 @@ export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ curren
           </button>
         </div>
 
-        {/* DIRECTOR'S DESK MANAGEMENT TAB */}
-        {activeTab === 'directorsDesk' && (
-          <AdminDirectorsDeskModule
-            userRole={currentUser?.role || 'admin'}
-            userName={currentUser?.name || 'Institute Admin'}
-          />
-        )}
-
         {/* CENTER MANAGEMENT TAB */}
         {activeTab === 'centers' && (
           <AdminCenterManagementModule />
+        )}
+
+        {/* MANAGING DIRECTOR & FOUNDER TAB */}
+        {activeTab === 'managingDirector' && (
+          <AdminManagingDirectorModule
+            userRole={currentUser?.role || 'admin'}
+            userName={currentUser?.name || 'Institute Admin'}
+          />
         )}
 
         {/* 1. COURSE CATALOG MANAGER TAB */}
