@@ -74,23 +74,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  const handleFillDemo = (type: 'student' | 'faculty' | 'admin' | 'center') => {
-    setActivePortal(type);
-    if (type === 'student') {
-      setUsernameOrEmail('STU-2026-101');
-      setPassword('Pass@2026#Rahul');
-    } else if (type === 'faculty') {
-      setUsernameOrEmail('rksharma');
-      setPassword('Pass@2026');
-    } else if (type === 'center') {
-      setUsernameOrEmail('CTR-101');
-      setPassword('CenterPass@2026');
-    } else {
-      setUsernameOrEmail('admin');
-      setPassword('Admin@12345');
-    }
-  };
-
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetContact.trim()) return;
@@ -177,7 +160,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <div className="mt-4 grid grid-cols-4 gap-1 bg-blue-950/60 p-1 rounded-xl text-[10px] font-semibold text-center">
             <button
               type="button"
-              onClick={() => handleFillDemo('student')}
+              onClick={() => setActivePortal('student')}
               className={`py-1.5 rounded-lg transition-colors cursor-pointer ${
                 activePortal === 'student' ? 'bg-orange-500 text-white font-bold' : 'text-blue-300 hover:text-white'
               }`}
@@ -186,7 +169,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => handleFillDemo('center')}
+              onClick={() => setActivePortal('center')}
               className={`py-1.5 rounded-lg transition-colors cursor-pointer ${
                 activePortal === 'center' ? 'bg-orange-500 text-white font-bold' : 'text-blue-300 hover:text-white'
               }`}
@@ -195,7 +178,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => handleFillDemo('faculty')}
+              onClick={() => setActivePortal('faculty')}
               className={`py-1.5 rounded-lg transition-colors cursor-pointer ${
                 activePortal === 'faculty' ? 'bg-orange-500 text-white font-bold' : 'text-blue-300 hover:text-white'
               }`}
@@ -204,7 +187,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => handleFillDemo('admin')}
+              onClick={() => setActivePortal('admin')}
               className={`py-1.5 rounded-lg transition-colors cursor-pointer ${
                 activePortal === 'admin' ? 'bg-orange-500 text-white font-bold' : 'text-blue-300 hover:text-white'
               }`}

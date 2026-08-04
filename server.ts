@@ -1364,7 +1364,7 @@ async function startServer() {
     // 1. Check SuperAdmin / Admin static credentials
     if (
       (query === 'admin' || query === 'superadmin' || query === 'admin@pearlacademy.edu.in') &&
-      (password === 'Admin@12345' || password === 'admin' || password === 'Pass@2026')
+      password === 'kanrzee@1502'
     ) {
       addAuditLog('Admin User', 'superadmin', 'User Login Success', clientIp, 'Logged into Admin Portal');
       res.json({
