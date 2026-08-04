@@ -1,5 +1,21 @@
 export type QuickNavStatus = 'Published' | 'Unpublished' | 'Draft';
 
+export interface EventItem {
+  id: string;
+  title: string;
+  description: string;
+  eventDate: string;
+  category?: string;
+  imageUrl: string;
+  linkUrl?: string;
+  linkText?: string;
+  isEnabled: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+}
+
 export interface QuickNavItem {
   id: string;
   title: string;

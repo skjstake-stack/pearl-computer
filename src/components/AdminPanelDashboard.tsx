@@ -5,6 +5,7 @@ import { AdminGalleryModule } from './AdminGalleryModule';
 import { AdminCourseModule } from './AdminCourseModule';
 import { AdminCenterManagementModule } from './AdminCenterManagementModule';
 import { AdminManagingDirectorModule } from './AdminManagingDirectorModule';
+import { AdminEventsModule } from './AdminEventsModule';
 import {
   ShieldAlert,
   Building2,
@@ -36,7 +37,8 @@ import {
   Share2,
   ImageIcon,
   BookOpen,
-  Compass
+  Compass,
+  Flame
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { AdmissionApplication, StudentAccount, FacultyAccount, EmailSettings, AuditLog, UserSession } from '../types';
@@ -49,7 +51,7 @@ interface AdminPanelDashboardProps {
 }
 
 export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ currentUser, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'courses' | 'admissions' | 'students' | 'faculty' | 'centers' | 'idcard' | 'emailSettings' | 'auditLogs' | 'gallery' | 'managingDirector'>('courses');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'courses' | 'admissions' | 'students' | 'faculty' | 'centers' | 'idcard' | 'emailSettings' | 'auditLogs' | 'gallery' | 'managingDirector' | 'events'>('courses');
 
   // Server Data Stores
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);
@@ -533,6 +535,15 @@ export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ curren
           </button>
 
           <button
+            onClick={() => setActiveTab('events')}
+            className={`pb-3 border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'events' ? 'border-amber-500 text-amber-600 dark:text-amber-400 font-bold' : 'text-slate-500'
+            }`}
+          >
+            <Flame className="w-4 h-4 text-amber-500" /> Event & Slider Manager
+          </button>
+
+          <button
             onClick={() => setActiveTab('gallery')}
             className={`pb-3 border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'gallery' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500'
@@ -559,6 +570,14 @@ export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ curren
             <Clock className="w-4 h-4" /> Security Audit Logs ({auditLogs.length})
           </button>
         </div>
+
+        {/* EVENTS & ANNOUNCEMENTS SLIDER TAB */}
+        {activeTab === 'events' && (
+          <AdminEventsModule
+            userRole={currentUser?.role || 'admin'}
+            userName={currentUser?.name || 'Institute Admin'}
+          />
+        )}
 
         {/* CENTER MANAGEMENT TAB */}
         {activeTab === 'centers' && (

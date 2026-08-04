@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
@@ -33,7 +34,8 @@ import {
   QuickNavItem,
   QuickNavStatus,
   DirectorDeskData,
-  DirectorVersionHistory
+  DirectorVersionHistory,
+  EventItem
 } from './src/types.js';
 
 dotenv.config();
@@ -251,6 +253,82 @@ let directorsDeskHistoryStore: DirectorVersionHistory[] = [
   }
 ];
 
+// Default Events & Persistent Disk Store
+const defaultEventsList: EventItem[] = [
+  {
+    id: 'evt-101',
+    title: 'Admissions Open 2026-27 | ISO Certified Diploma Courses',
+    description: 'Enroll now for DCA, PGDCA, ADCA, Tally Prime Gold, and Full Stack Web Development with 100% Practical Lab Training & Govt Job Placement Support.',
+    eventDate: 'August 2026 Batch',
+    category: 'Admissions Open',
+    imageUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1200&auto=format&fit=crop&q=80',
+    linkUrl: '#admissions',
+    linkText: 'Apply Online Now',
+    isEnabled: true,
+    order: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    createdBy: 'System Administrator'
+  },
+  {
+    id: 'evt-102',
+    title: 'Annual Tech Innovation & Coding Hackathon 2026',
+    description: 'Showcase your web app, python scripts, and IT projects at the grandest inter-college tech competition with cash prizes up to ₹50,000!',
+    eventDate: '25th August 2026',
+    category: 'Annual Tech Fest',
+    imageUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=1200&auto=format&fit=crop&q=80',
+    linkUrl: '#courses',
+    linkText: 'Register Project',
+    isEnabled: true,
+    order: 2,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    createdBy: 'System Administrator'
+  },
+  {
+    id: 'evt-103',
+    title: 'Special Workshop on Generative AI & Cloud Architecture',
+    description: 'Exclusive 3-day hands-on workshop on AI prompt engineering, Gemini API, and Cloud deployment led by senior M.Tech faculty.',
+    eventDate: '5th September 2026',
+    category: 'Special Workshop',
+    imageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&auto=format&fit=crop&q=80',
+    linkUrl: '#courses',
+    linkText: 'View Syllabus',
+    isEnabled: true,
+    order: 3,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    createdBy: 'System Administrator'
+  }
+];
+
+const EVENTS_FILE_PATH = path.join(process.cwd(), 'events_store.json');
+
+function loadEventsFromDisk(): EventItem[] {
+  try {
+    if (fs.existsSync(EVENTS_FILE_PATH)) {
+      const raw = fs.readFileSync(EVENTS_FILE_PATH, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('[EVENTS STORE] Failed to read events_store.json:', err);
+  }
+  return defaultEventsList;
+}
+
+let eventsStore: EventItem[] = loadEventsFromDisk();
+
+function saveEventsToDisk() {
+  try {
+    fs.writeFileSync(EVENTS_FILE_PATH, JSON.stringify(eventsStore, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[EVENTS STORE] Failed to write events_store.json:', err);
+  }
+}
+
 // Password Validation Rules Helper
 function validatePasswordRules(password: string): { isValid: boolean; error?: string } {
   if (!password || password.length < 8) {
@@ -301,8 +379,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(express.json({ limit: '30mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '30mb' }));
 
   // Helper: Log audit trail
   const addAuditLog = (user: string, role: string, action: string, ip: string, details: string) => {
@@ -702,6 +780,266 @@ async function startServer() {
       message: 'Managing Director photo deleted successfully.',
       photoUrl: '',
       data: directorsDeskStore
+    });
+  });
+
+  // ==========================================
+  // EVENTS & ANNOUNCEMENTS SLIDER ENDPOINTS
+  // ==========================================
+
+  // Public GET Endpoint: Fetch Active Events for Public Homepage Slider
+  app.get('/api/events', (req, res) => {
+    const activeEvents = eventsStore
+      .filter(e => e.isEnabled)
+      .sort((a, b) => a.order - b.order);
+    res.json({ success: true, events: activeEvents });
+  });
+
+  // Admin GET Endpoint: Fetch ALL Events (including disabled)
+  app.get('/api/admin/events', (req, res) => {
+    const sorted = [...eventsStore].sort((a, b) => a.order - b.order);
+    res.json({ success: true, events: sorted });
+  });
+
+  // Admin POST Endpoint: Create New Event
+  app.post('/api/admin/events', (req, res) => {
+    const { title, description, eventDate, category, imageBase64, imageUrl, linkUrl, linkText, isEnabled, isFirst } = req.body || {};
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    if (!title || !title.trim()) {
+      res.status(400).json({ success: false, message: 'Event title is required.' });
+      return;
+    }
+
+    let finalImageUrl = imageUrl || '';
+
+    if (imageBase64) {
+      const isAllowedFormat = /^data:image\/(webp|jpeg|jpg|png);base64,/.test(imageBase64);
+      if (!isAllowedFormat) {
+        res.status(400).json({
+          success: false,
+          message: 'Only JPG, JPEG, PNG, and WebP image files are permitted.'
+        });
+        return;
+      }
+
+      const approxSizeBytes = imageBase64.length * 0.75;
+      if (approxSizeBytes > 10.5 * 1024 * 1024) {
+        res.status(400).json({
+          success: false,
+          message: 'Image size exceeds the 10 MB maximum limit.'
+        });
+        return;
+      }
+      finalImageUrl = imageBase64;
+    }
+
+    if (!finalImageUrl) {
+      finalImageUrl = 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1200&auto=format&fit=crop&q=80';
+    }
+
+    const newEvent: EventItem = {
+      id: `evt-${Date.now()}`,
+      title: title.trim(),
+      description: (description || '').trim(),
+      eventDate: (eventDate || '').trim() || 'Upcoming Event',
+      category: (category || 'Announcement').trim(),
+      imageUrl: finalImageUrl,
+      linkUrl: (linkUrl || '').trim(),
+      linkText: (linkText || 'View Details').trim(),
+      isEnabled: isEnabled !== undefined ? Boolean(isEnabled) : true,
+      order: isFirst ? 1 : eventsStore.length + 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: editorName
+    };
+
+    if (isFirst) {
+      eventsStore.forEach(e => { e.order += 1; });
+      eventsStore.unshift(newEvent);
+    } else {
+      eventsStore.push(newEvent);
+    }
+
+    eventsStore.forEach((e, idx) => { e.order = idx + 1; });
+
+    saveEventsToDisk();
+
+    addAuditLog(editorName, 'admin', 'Created Event', req.ip || '127.0.0.1', `Created event: "${newEvent.title}"`);
+
+    res.json({
+      success: true,
+      message: 'Event created and added to slider successfully!',
+      event: newEvent
+    });
+  });
+
+  // Admin PUT Endpoint: Update Existing Event
+  app.put('/api/admin/events/:id', (req, res) => {
+    const { id } = req.params;
+    const { title, description, eventDate, category, imageBase64, imageUrl, linkUrl, linkText, isEnabled, isFirst } = req.body || {};
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    const eventIndex = eventsStore.findIndex(e => e.id === id);
+    if (eventIndex === -1) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    const existing = eventsStore[eventIndex];
+
+    if (title !== undefined && (!title || !title.trim())) {
+      res.status(400).json({ success: false, message: 'Event title cannot be empty.' });
+      return;
+    }
+
+    if (imageBase64) {
+      const isAllowedFormat = /^data:image\/(webp|jpeg|jpg|png);base64,/.test(imageBase64);
+      if (!isAllowedFormat) {
+        res.status(400).json({
+          success: false,
+          message: 'Only JPG, JPEG, PNG, and WebP image files are permitted.'
+        });
+        return;
+      }
+      const approxSizeBytes = imageBase64.length * 0.75;
+      if (approxSizeBytes > 10.5 * 1024 * 1024) {
+        res.status(400).json({
+          success: false,
+          message: 'Image size exceeds the 10 MB maximum limit.'
+        });
+        return;
+      }
+      existing.imageUrl = imageBase64;
+    } else if (imageUrl) {
+      existing.imageUrl = imageUrl;
+    }
+
+    if (title !== undefined) existing.title = title.trim();
+    if (description !== undefined) existing.description = description.trim();
+    if (eventDate !== undefined) existing.eventDate = eventDate.trim();
+    if (category !== undefined) existing.category = category.trim();
+    if (linkUrl !== undefined) existing.linkUrl = linkUrl.trim();
+    if (linkText !== undefined) existing.linkText = linkText.trim();
+    if (isEnabled !== undefined) existing.isEnabled = Boolean(isEnabled);
+    existing.updatedAt = new Date().toISOString();
+
+    if (isFirst && eventIndex !== 0) {
+      eventsStore.splice(eventIndex, 1);
+      eventsStore.unshift(existing);
+    }
+
+    eventsStore.forEach((e, idx) => { e.order = idx + 1; });
+
+    saveEventsToDisk();
+
+    addAuditLog(editorName, 'admin', 'Updated Event', req.ip || '127.0.0.1', `Updated event: "${existing.title}"`);
+
+    res.json({
+      success: true,
+      message: 'Event updated successfully!',
+      event: existing
+    });
+  });
+
+  // Admin POST Endpoint: Toggle Enable/Disable Event
+  app.post('/api/admin/events/:id/toggle', (req, res) => {
+    const { id } = req.params;
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    const event = eventsStore.find(e => e.id === id);
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    event.isEnabled = !event.isEnabled;
+    event.updatedAt = new Date().toISOString();
+
+    saveEventsToDisk();
+
+    addAuditLog(
+      editorName,
+      'admin',
+      'Toggled Event Status',
+      req.ip || '127.0.0.1',
+      `Event "${event.title}" is now ${event.isEnabled ? 'ENABLED' : 'DISABLED'}`
+    );
+
+    res.json({
+      success: true,
+      message: `Event is now ${event.isEnabled ? 'Enabled' : 'Disabled'}!`,
+      event
+    });
+  });
+
+  // Admin DELETE Endpoint: Delete Event
+  app.delete('/api/admin/events/:id', (req, res) => {
+    const { id } = req.params;
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    const index = eventsStore.findIndex(e => e.id === id);
+    if (index === -1) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    const removed = eventsStore.splice(index, 1)[0];
+    eventsStore.forEach((e, idx) => { e.order = idx + 1; });
+
+    saveEventsToDisk();
+
+    addAuditLog(editorName, 'admin', 'Deleted Event', req.ip || '127.0.0.1', `Deleted event: "${removed.title}"`);
+
+    res.json({
+      success: true,
+      message: 'Event deleted successfully!',
+      deletedId: id
+    });
+  });
+
+  // Admin POST Endpoint: Reorder Events
+  app.post('/api/admin/events/reorder', (req, res) => {
+    const { orderedIds, eventId, direction } = req.body || {};
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    if (Array.isArray(orderedIds)) {
+      const newStore: EventItem[] = [];
+      orderedIds.forEach(id => {
+        const item = eventsStore.find(e => e.id === id);
+        if (item) newStore.push(item);
+      });
+      eventsStore.forEach(e => {
+        if (!newStore.find(x => x.id === e.id)) newStore.push(e);
+      });
+      eventsStore = newStore;
+    } else if (eventId && direction) {
+      const idx = eventsStore.findIndex(e => e.id === eventId);
+      if (idx !== -1) {
+        if (direction === 'up' && idx > 0) {
+          const temp = eventsStore[idx];
+          eventsStore[idx] = eventsStore[idx - 1];
+          eventsStore[idx - 1] = temp;
+        } else if (direction === 'down' && idx < eventsStore.length - 1) {
+          const temp = eventsStore[idx];
+          eventsStore[idx] = eventsStore[idx + 1];
+          eventsStore[idx + 1] = temp;
+        } else if (direction === 'top' && idx > 0) {
+          const item = eventsStore.splice(idx, 1)[0];
+          eventsStore.unshift(item);
+        }
+      }
+    }
+
+    eventsStore.forEach((e, idx) => { e.order = idx + 1; });
+    saveEventsToDisk();
+
+    addAuditLog(editorName, 'admin', 'Reordered Events', req.ip || '127.0.0.1', 'Updated event slider sequence');
+
+    res.json({
+      success: true,
+      message: 'Events reordered successfully!',
+      events: eventsStore
     });
   });
 

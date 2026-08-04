@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
+import { EventsSlider } from './components/EventsSlider';
 import { HeroSection } from './components/HeroSection';
 import { WhyChooseUs } from './components/WhyChooseUs';
 import { PopularCourses } from './components/PopularCourses';
@@ -123,6 +124,11 @@ export default function App() {
           onOpenLoginModal={handleOpenLogin}
           onOpenAdmissionModal={() => handleOpenAdmission()}
         />
+
+        {/* Events & Announcements Slider directly below website header */}
+        {['home', 'courses', 'verification', 'gallery', 'about', 'contact'].includes(activeTab) && (
+          <EventsSlider onOpenAdmissionModal={() => handleOpenAdmission()} />
+        )}
 
         {/* Dynamic Page Views */}
 
