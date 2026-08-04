@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FacultyManagementModule } from './FacultyManagementModule';
 import { StudentManagementModule } from './StudentManagementModule';
 import { AdminGalleryModule } from './AdminGalleryModule';
+import { AdminMediaManagementModule } from './AdminMediaManagementModule';
 import { AdminCourseModule } from './AdminCourseModule';
 import { AdminCenterManagementModule } from './AdminCenterManagementModule';
 import { AdminManagingDirectorModule } from './AdminManagingDirectorModule';
@@ -549,7 +550,7 @@ export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ curren
               activeTab === 'gallery' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500'
             }`}
           >
-            <ImageIcon className="w-4 h-4 text-emerald-500" /> Gallery Manager
+            <ImageIcon className="w-4 h-4 text-emerald-500" /> Media & Gallery Storage
           </button>
 
           <button
@@ -926,9 +927,12 @@ export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ curren
           </div>
         )}
 
-        {/* 6. GALLERY MANAGER */}
+        {/* 6. MEDIA & GALLERY STORAGE */}
         {activeTab === 'gallery' && (
-          <AdminGalleryModule />
+          <AdminMediaManagementModule
+            userRole={currentUser?.role || 'admin'}
+            userName={currentUser?.name || 'Institute Admin'}
+          />
         )}
 
         {/* Modal: Add Faculty */}

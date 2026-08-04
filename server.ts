@@ -210,7 +210,7 @@ let auditLogsStore: AuditLog[] = [
   }
 ];
 
-let directorsDeskStore: DirectorDeskData = {
+const initialDirectorsDeskData: DirectorDeskData = {
   id: 'dir-desk-1',
   photoUrl: 'https://linkinseconds.com/p/whatsapp-image-2026-08-02-at-13-34-25-1',
   name: 'Mr. Bisan Kanarzee',
@@ -242,6 +242,33 @@ let directorsDeskStore: DirectorDeskData = {
   updatedAt: new Date().toISOString(),
   updatedBy: 'System Administrator'
 };
+
+const DIRECTOR_FILE_PATH = path.join(process.cwd(), 'director_store.json');
+
+function loadDirectorFromDisk(): DirectorDeskData {
+  try {
+    if (fs.existsSync(DIRECTOR_FILE_PATH)) {
+      const raw = fs.readFileSync(DIRECTOR_FILE_PATH, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && parsed.id) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('[DIRECTOR STORE] Failed to read director_store.json:', err);
+  }
+  return initialDirectorsDeskData;
+}
+
+function saveDirectorToDisk() {
+  try {
+    fs.writeFileSync(DIRECTOR_FILE_PATH, JSON.stringify(directorsDeskStore, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[DIRECTOR STORE] Failed to write director_store.json:', err);
+  }
+}
+
+let directorsDeskStore: DirectorDeskData = loadDirectorFromDisk();
 
 let directorsDeskHistoryStore: DirectorVersionHistory[] = [
   {
@@ -691,6 +718,7 @@ async function startServer() {
       updatedAt: new Date().toISOString(),
       updatedBy: editorName
     };
+    saveDirectorToDisk();
 
     addAuditLog(
       editorName,
@@ -741,6 +769,7 @@ async function startServer() {
     directorsDeskStore.photoUrl = imageBase64;
     directorsDeskStore.updatedAt = new Date().toISOString();
     directorsDeskStore.updatedBy = editorName;
+    saveDirectorToDisk();
 
     const auditAction = action === 'replace' ? 'Replaced Managing Director Photo' : 'Uploaded Managing Director Photo';
     addAuditLog(
@@ -766,6 +795,7 @@ async function startServer() {
     directorsDeskStore.photoUrl = '';
     directorsDeskStore.updatedAt = new Date().toISOString();
     directorsDeskStore.updatedBy = editorName;
+    saveDirectorToDisk();
 
     addAuditLog(
       editorName,
@@ -2849,9 +2879,13 @@ async function startServer() {
   });
 
   // -------------------------------------------------------------
-  // GALLERY MANAGEMENT STORE & ENDPOINTS
+  // GALLERY MANAGEMENT STORE & ENDPOINTS (PERSISTENT DISK STORAGE)
   // -------------------------------------------------------------
-  const galleryAlbumsStore = [
+  const GALLERY_ALBUMS_FILE_PATH = path.join(process.cwd(), 'gallery_albums_store.json');
+  const GALLERY_PHOTOS_FILE_PATH = path.join(process.cwd(), 'gallery_photos_store.json');
+  const GALLERY_VIDEOS_FILE_PATH = path.join(process.cwd(), 'gallery_videos_store.json');
+
+  const initialGalleryAlbums = [
     {
       id: 'alb-1',
       name: 'Annual Tech & Cultural Fest 2026',
@@ -2920,7 +2954,72 @@ async function startServer() {
     }
   ];
 
-  const galleryPhotosStore = [
+  function loadGalleryAlbumsFromDisk(): any[] {
+    try {
+      if (fs.existsSync(GALLERY_ALBUMS_FILE_PATH)) {
+        const raw = fs.readFileSync(GALLERY_ALBUMS_FILE_PATH, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (err) {
+      console.error('Failed to load gallery_albums_store.json:', err);
+    }
+    return initialGalleryAlbums;
+  }
+
+  const galleryAlbumsStore = loadGalleryAlbumsFromDisk();
+
+  function saveGalleryAlbumsToDisk() {
+    try {
+      fs.writeFileSync(GALLERY_ALBUMS_FILE_PATH, JSON.stringify(galleryAlbumsStore, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('Failed to write gallery_albums_store.json:', err);
+    }
+  }
+
+  function loadGalleryPhotosFromDisk(initial: any[]): any[] {
+    try {
+      if (fs.existsSync(GALLERY_PHOTOS_FILE_PATH)) {
+        const raw = fs.readFileSync(GALLERY_PHOTOS_FILE_PATH, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (err) {
+      console.error('Failed to load gallery_photos_store.json:', err);
+    }
+    return initial;
+  }
+
+  function saveGalleryPhotosToDisk() {
+    try {
+      fs.writeFileSync(GALLERY_PHOTOS_FILE_PATH, JSON.stringify(galleryPhotosStore, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('Failed to write gallery_photos_store.json:', err);
+    }
+  }
+
+  function loadGalleryVideosFromDisk(initial: any[]): any[] {
+    try {
+      if (fs.existsSync(GALLERY_VIDEOS_FILE_PATH)) {
+        const raw = fs.readFileSync(GALLERY_VIDEOS_FILE_PATH, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (err) {
+      console.error('Failed to load gallery_videos_store.json:', err);
+    }
+    return initial;
+  }
+
+  function saveGalleryVideosToDisk() {
+    try {
+      fs.writeFileSync(GALLERY_VIDEOS_FILE_PATH, JSON.stringify(galleryVideosStore, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('Failed to write gallery_videos_store.json:', err);
+    }
+  }
+
+  const initialGalleryPhotos = [
     {
       id: 'photo-1',
       title: 'Modern i7 Computer Lab with Dual Monitors',
@@ -3115,7 +3214,9 @@ async function startServer() {
     }
   ];
 
-  const galleryVideosStore = [
+  const galleryPhotosStore = loadGalleryPhotosFromDisk(initialGalleryPhotos);
+
+  const initialGalleryVideos = [
     {
       id: 'vid-1',
       title: 'Pearl Computer & Target Academy - Official Campus Virtual Tour',
@@ -3202,6 +3303,8 @@ async function startServer() {
     }
   ];
 
+  const galleryVideosStore = loadGalleryVideosFromDisk(initialGalleryVideos);
+
   // --- PHOTO GALLERY APIS ---
   app.get('/api/gallery/photos', (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
@@ -3282,9 +3385,11 @@ async function startServer() {
     };
 
     galleryPhotosStore.unshift(newPhoto);
+    saveGalleryPhotosToDisk();
 
     if (album) {
       album.photoCount = (album.photoCount || 0) + 1;
+      saveGalleryAlbumsToDisk();
     }
 
     addAuditLog('Admin', 'admin', 'Uploaded Gallery Photo', req.ip || '127.0.0.1', `Added photo: ${title} in ${category}`);
@@ -3306,6 +3411,7 @@ async function startServer() {
     }
 
     Object.assign(photo, req.body);
+    saveGalleryPhotosToDisk();
 
     addAuditLog('Admin', 'admin', 'Updated Gallery Photo', req.ip || '127.0.0.1', `Updated photo: ${photo.title}`);
 
@@ -3326,6 +3432,7 @@ async function startServer() {
     }
 
     const removed = galleryPhotosStore.splice(index, 1)[0];
+    saveGalleryPhotosToDisk();
     addAuditLog('Admin', 'admin', 'Deleted Gallery Photo', req.ip || '127.0.0.1', `Deleted photo: ${removed.title}`);
 
     res.json({
@@ -3351,6 +3458,7 @@ async function startServer() {
     });
 
     addAuditLog('Admin', 'admin', 'Bulk Deleted Gallery Photos', req.ip || '127.0.0.1', `Bulk deleted ${deletedCount} photos`);
+    saveGalleryPhotosToDisk();
 
     res.json({
       success: true,
@@ -3435,6 +3543,7 @@ async function startServer() {
     };
 
     galleryVideosStore.unshift(newVideo);
+    saveGalleryVideosToDisk();
 
     addAuditLog('Admin', 'admin', 'Added Gallery Video', req.ip || '127.0.0.1', `Added video: ${title}`);
 
@@ -3455,6 +3564,7 @@ async function startServer() {
     }
 
     Object.assign(video, req.body);
+    saveGalleryVideosToDisk();
 
     addAuditLog('Admin', 'admin', 'Updated Gallery Video', req.ip || '127.0.0.1', `Updated video: ${video.title}`);
 
@@ -3475,6 +3585,7 @@ async function startServer() {
     }
 
     const removed = galleryVideosStore.splice(index, 1)[0];
+    saveGalleryVideosToDisk();
     addAuditLog('Admin', 'admin', 'Deleted Gallery Video', req.ip || '127.0.0.1', `Deleted video: ${removed.title}`);
 
     res.json({
@@ -3512,6 +3623,7 @@ async function startServer() {
     };
 
     galleryAlbumsStore.unshift(newAlbum);
+    saveGalleryAlbumsToDisk();
 
     addAuditLog('Admin', 'admin', 'Created Gallery Album', req.ip || '127.0.0.1', `Created album: ${name}`);
 
@@ -3532,6 +3644,7 @@ async function startServer() {
     }
 
     Object.assign(album, req.body);
+    saveGalleryAlbumsToDisk();
 
     addAuditLog('Admin', 'admin', 'Updated Gallery Album', req.ip || '127.0.0.1', `Updated album: ${album.name}`);
 
@@ -3552,11 +3665,132 @@ async function startServer() {
     }
 
     const removed = galleryAlbumsStore.splice(index, 1)[0];
+    saveGalleryAlbumsToDisk();
     addAuditLog('Admin', 'admin', 'Deleted Gallery Album', req.ip || '127.0.0.1', `Deleted album: ${removed.name}`);
 
     res.json({
       success: true,
       message: 'Album deleted successfully!'
+    });
+  });
+
+  // --- DEDICATED MEDIA MANAGEMENT PERMANENT FILE STORAGE ENDPOINT ---
+  app.post('/api/admin/media/upload', checkAdminRbac, (req, res) => {
+    const { imageBase64, fileName, title, category, albumId, description, tags, target } = req.body || {};
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      res.status(400).json({ success: false, message: 'Missing or invalid image payload.' });
+      return;
+    }
+
+    const isAllowedFormat = /^data:image\/(webp|jpeg|jpg|png);base64,/.test(imageBase64);
+    if (!isAllowedFormat) {
+      res.status(400).json({
+        success: false,
+        message: 'Security Restriction: Only valid JPG, JPEG, PNG, and WebP image files are permitted.'
+      });
+      return;
+    }
+
+    const sizeInBytes = imageBase64.length * 0.75;
+    if (sizeInBytes > 10.5 * 1024 * 1024) {
+      res.status(400).json({
+        success: false,
+        message: 'File size exceeds the 10 MB maximum limit.'
+      });
+      return;
+    }
+
+    // Save binary file into public/uploads directory for permanent disk access
+    const extMatch = imageBase64.match(/^data:image\/(webp|jpeg|jpg|png);base64,/);
+    const ext = extMatch ? (extMatch[1] === 'jpeg' ? 'jpg' : extMatch[1]) : 'webp';
+    const cleanFileName = `img_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    
+    if (!fs.existsSync(uploadsDir)) {
+      try {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      } catch (e) {
+        console.error('Error creating uploads directory:', e);
+      }
+    }
+
+    const filePath = path.join(uploadsDir, cleanFileName);
+    let savedUrl = imageBase64; // base64 fallback in disk JSON store
+
+    try {
+      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      fs.writeFileSync(filePath, buffer);
+      savedUrl = `/uploads/${cleanFileName}`;
+    } catch (err) {
+      console.error('Failed writing file to public/uploads, falling back to base64 persistence:', err);
+    }
+
+    if (target === 'director') {
+      directorsDeskStore.photoUrl = savedUrl;
+      directorsDeskStore.updatedAt = new Date().toISOString();
+      directorsDeskStore.updatedBy = editorName;
+      saveDirectorToDisk();
+
+      addAuditLog(
+        editorName,
+        'admin',
+        'Uploaded Managing Director Photo',
+        req.ip || '127.0.0.1',
+        `Uploaded director photo saved to disk: ${cleanFileName}`
+      );
+
+      res.json({
+        success: true,
+        message: 'Managing Director profile photo updated and stored permanently on disk!',
+        url: savedUrl,
+        director: directorsDeskStore
+      });
+      return;
+    }
+
+    // Default target: 'gallery'
+    const album = galleryAlbumsStore.find(a => a.id === albumId);
+    const newPhoto = {
+      id: `photo-${Date.now()}`,
+      title: (title || fileName || 'Gallery Image').trim(),
+      description: (description || '').trim(),
+      url: savedUrl,
+      thumbnailUrl: savedUrl,
+      category: (category || 'Campus').trim(),
+      albumId: albumId || '',
+      albumName: album ? album.name : '',
+      event: 'Gallery Upload',
+      year: new Date().getFullYear(),
+      altText: title || 'Pearl Academy Gallery Image',
+      seoKeywords: (tags || title || 'gallery, media').trim(),
+      isPublished: true,
+      uploadedAt: new Date().toISOString().split('T')[0]
+    };
+
+    galleryPhotosStore.unshift(newPhoto);
+    saveGalleryPhotosToDisk();
+
+    if (album) {
+      album.photoCount = (album.photoCount || 0) + 1;
+      saveGalleryAlbumsToDisk();
+    }
+
+    addAuditLog(
+      editorName,
+      'admin',
+      'Uploaded Permanent Gallery Photo',
+      req.ip || '127.0.0.1',
+      `Uploaded persistent gallery photo: ${newPhoto.title}`
+    );
+
+    res.json({
+      success: true,
+      message: 'Image uploaded and saved permanently to server storage!',
+      photo: newPhoto,
+      url: savedUrl
     });
   });
 
