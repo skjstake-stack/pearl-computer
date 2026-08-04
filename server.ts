@@ -6,6 +6,8 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
+import cloudinary from './config/cloudinary.js';
 import {
   initialEmailSettings,
   sampleCourses,
@@ -41,6 +43,12 @@ import {
 dotenv.config();
 
 const __dirname = process.cwd();
+
+// Configure Multer in-memory storage (Zero local disk file saving)
+const multerUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // In-Memory Database Store
 let emailSettingsStore: EmailSettings = { ...initialEmailSettings };
@@ -2308,6 +2316,229 @@ async function startServer() {
     });
   });
 
+  // --- POST /api/students/upload-image ---
+  // Student Image Upload API using Cloudinary (folder: student_profiles/)
+  app.post('/api/students/upload-image', (req, res, next) => {
+    multerUpload.any()(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            success: false,
+            message: 'File size exceeds the 5 MB maximum limit.'
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          message: err.message || 'File upload validation error.'
+        });
+      }
+      next();
+    });
+  }, async (req: express.Request, res: express.Response) => {
+    try {
+      let imageToUpload: string | null = null;
+      let mimeType: string = 'image/jpeg';
+
+      // Check if file was uploaded via multipart/form-data
+      const file = req.file || (req.files && Array.isArray(req.files) && req.files.length > 0 ? req.files[0] : null);
+
+      if (file) {
+        mimeType = file.mimetype;
+        const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+        if (!allowedMimeTypes.includes(mimeType) && !mimeType.startsWith('image/')) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid file type. Only JPEG, JPG, PNG, WEBP, GIF, and SVG image files are permitted.'
+          });
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          return res.status(400).json({
+            success: false,
+            message: 'File size exceeds the 5 MB maximum limit.'
+          });
+        }
+
+        const base64Data = file.buffer.toString('base64');
+        imageToUpload = `data:${mimeType};base64,${base64Data}`;
+      } else if (req.body && (req.body.image || req.body.profile_image || req.body.file || req.body.avatar)) {
+        const rawImage = req.body.image || req.body.profile_image || req.body.file || req.body.avatar;
+        if (typeof rawImage === 'string') {
+          if (rawImage.startsWith('data:image/')) {
+            const isAllowed = /^data:image\/(webp|jpeg|jpg|png|gif|svg\+xml);base64,/.test(rawImage);
+            if (!isAllowed) {
+              return res.status(400).json({
+                success: false,
+                message: 'Invalid base64 image format. Only JPG, JPEG, PNG, WEBP, GIF, and SVG are permitted.'
+              });
+            }
+            const sizeInBytes = rawImage.length * 0.75;
+            if (sizeInBytes > 5.5 * 1024 * 1024) {
+              return res.status(400).json({
+                success: false,
+                message: 'Image size exceeds the 5 MB maximum limit.'
+              });
+            }
+          }
+          imageToUpload = rawImage;
+        }
+      }
+
+      if (!imageToUpload) {
+        return res.status(400).json({
+          success: false,
+          message: 'No image file or image data provided. Please upload an image file or provide a base64 image payload.'
+        });
+      }
+
+      // Check Cloudinary environment credentials
+      const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+      const apiKey = process.env.CLOUDINARY_API_KEY;
+      const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+      if (!cloudName || !apiKey || !apiSecret) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cloudinary environment variables missing. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in environment variables.'
+        });
+      }
+
+      // Upload to Cloudinary using uploader.upload() inside folder "student_profiles/"
+      const uploadResult = await cloudinary.uploader.upload(imageToUpload, {
+        folder: 'student_profiles',
+        resource_type: 'image'
+      });
+
+      const public_id = uploadResult.public_id;
+      const secure_url = uploadResult.secure_url;
+
+      // Extract Student Info from Body or Query
+      const {
+        id,
+        student_id,
+        student_name,
+        studentName,
+        name,
+        roll_number,
+        rollNumber,
+        class: studentClass,
+        course,
+        section,
+        batch
+      } = req.body || {};
+
+      const searchId = id || student_id;
+      const finalName = student_name || studentName || name || 'Student';
+      const finalRollNumber = roll_number || rollNumber || 'N/A';
+      const finalClass = studentClass || course || 'General';
+      const finalSection = section || batch || 'Section-A';
+
+      // Find or create student in database table / store
+      let student = studentsStore.find(s =>
+        (searchId && (s.id === searchId || s.studentId === searchId)) ||
+        (finalRollNumber !== 'N/A' && s.rollNumber === finalRollNumber)
+      );
+
+      const createdAt = student ? ((student as any).created_at || (student as any).createdAt || new Date().toISOString()) : new Date().toISOString();
+
+      if (student) {
+        student.avatar = secure_url;
+        (student as any).profile_image_url = secure_url;
+        if (finalName && finalName !== 'Student') student.name = finalName;
+        if (finalRollNumber && finalRollNumber !== 'N/A') student.rollNumber = finalRollNumber;
+        if (finalClass && finalClass !== 'General') student.course = finalClass;
+        if (finalSection && finalSection !== 'Section-A') student.batch = finalSection;
+        (student as any).updatedAt = new Date().toISOString();
+      } else {
+        const generatedId = searchId || `std-${Date.now()}`;
+        student = {
+          id: generatedId,
+          studentId: searchId || `STD${Math.floor(1000 + Math.random() * 9000)}`,
+          name: finalName,
+          rollNumber: finalRollNumber,
+          course: finalClass,
+          batch: finalSection,
+          avatar: secure_url,
+          profile_image_url: secure_url,
+          status: 'Active',
+          attendancePercentage: 100,
+          feeTotal: 8000,
+          feePaid: 3000,
+          createdAt
+        } as any;
+        studentsStore.unshift(student!);
+      }
+
+      addAuditLog('System', 'admin', 'Uploaded Student Profile Image to Cloudinary', req.ip || '127.0.0.1', `Uploaded profile image for ${student!.name} (Public ID: ${public_id})`);
+
+      // Database Record & Upload Response
+      return res.status(200).json({
+        success: true,
+        message: 'Student profile image uploaded successfully to Cloudinary!',
+        public_id,
+        secure_url,
+        student: {
+          id: student!.id,
+          student_name: student!.name,
+          roll_number: student!.rollNumber || 'N/A',
+          class: student!.course || 'General',
+          section: student!.batch || 'Section-A',
+          profile_image_url: secure_url,
+          created_at: createdAt
+        }
+      });
+    } catch (error: any) {
+      console.error('Cloudinary student profile upload error:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Failed to upload student image to Cloudinary.',
+        error: error ? error.toString() : 'Unknown error'
+      });
+    }
+  });
+
+  // --- DELETE /api/students/:id/image ---
+  // Delete student profile image (resets profile_image_url & removes from Cloudinary if public_id supplied)
+  app.delete('/api/students/:id/image', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { public_id } = req.body || {};
+
+      const student = studentsStore.find(s => s.id === id || s.studentId === id);
+      if (!student) {
+        return res.status(404).json({ success: false, message: 'Student not found.' });
+      }
+
+      if (public_id && process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+        try {
+          await cloudinary.uploader.destroy(public_id);
+        } catch (cErr) {
+          console.error('Cloudinary image deletion warning:', cErr);
+        }
+      }
+
+      student.avatar = '';
+      (student as any).profile_image_url = null;
+
+      addAuditLog('System', 'admin', 'Deleted Student Profile Image', req.ip || '127.0.0.1', `Deleted profile image for ${student.name}`);
+
+      return res.json({
+        success: true,
+        message: 'Student profile image deleted successfully!',
+        student: {
+          id: student.id,
+          student_name: student.name,
+          profile_image_url: null
+        }
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        message: err?.message || 'Failed to delete student image.'
+      });
+    }
+  });
+
   // Edit Student Account Details (Admin)
   app.put('/api/students/:id', (req, res) => {
     const { id } = req.params;
@@ -3675,7 +3906,7 @@ async function startServer() {
   });
 
   // --- DEDICATED MEDIA MANAGEMENT PERMANENT FILE STORAGE ENDPOINT ---
-  app.post('/api/admin/media/upload', checkAdminRbac, (req, res) => {
+  app.post('/api/admin/media/upload', checkAdminRbac, async (req, res) => {
     const { imageBase64, fileName, title, category, albumId, description, tags, target } = req.body || {};
     const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
 
@@ -3702,30 +3933,21 @@ async function startServer() {
       return;
     }
 
-    // Save binary file into public/uploads directory for permanent disk access
-    const extMatch = imageBase64.match(/^data:image\/(webp|jpeg|jpg|png);base64,/);
-    const ext = extMatch ? (extMatch[1] === 'jpeg' ? 'jpg' : extMatch[1]) : 'webp';
-    const cleanFileName = `img_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    
-    if (!fs.existsSync(uploadsDir)) {
+    let savedUrl = imageBase64;
+    let cloudPublicId: string | undefined;
+
+    // Upload to Cloudinary if environment variables are configured
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
       try {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      } catch (e) {
-        console.error('Error creating uploads directory:', e);
+        const result = await cloudinary.uploader.upload(imageBase64, {
+          folder: target === 'director' ? 'director_desk' : 'gallery',
+          resource_type: 'image'
+        });
+        savedUrl = result.secure_url;
+        cloudPublicId = result.public_id;
+      } catch (cloudErr) {
+        console.error('Cloudinary media upload error, using base64 payload:', cloudErr);
       }
-    }
-
-    const filePath = path.join(uploadsDir, cleanFileName);
-    let savedUrl = imageBase64; // base64 fallback in disk JSON store
-
-    try {
-      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      fs.writeFileSync(filePath, buffer);
-      savedUrl = `/uploads/${cleanFileName}`;
-    } catch (err) {
-      console.error('Failed writing file to public/uploads, falling back to base64 persistence:', err);
     }
 
     if (target === 'director') {
@@ -3739,7 +3961,7 @@ async function startServer() {
         'admin',
         'Uploaded Managing Director Photo',
         req.ip || '127.0.0.1',
-        `Uploaded director photo saved to disk: ${cleanFileName}`
+        `Uploaded director photo: ${cloudPublicId || 'Stored in Cloudinary'}`
       );
 
       res.json({
