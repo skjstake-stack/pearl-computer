@@ -3794,6 +3794,669 @@ async function startServer() {
     });
   });
 
+  // -------------------------------------------------------------
+  // STUDENT ATTENDANCE MANAGEMENT STORE & API ENDPOINTS
+  // -------------------------------------------------------------
+  const ATTENDANCE_FILE_PATH = path.join(process.cwd(), 'attendance_store.json');
+  const ATTENDANCE_LOCKS_FILE_PATH = path.join(process.cwd(), 'attendance_locks_store.json');
+
+  const initialAttendanceData = [
+    {
+      id: 'att-1001',
+      studentId: 'STU-2026-101',
+      studentName: 'Rahul Sharma',
+      rollNumber: 'PCTA2026101',
+      courseId: 'c-adca-01',
+      courseName: 'ADCA (Advanced Diploma in Computer Applications)',
+      batchId: 'b-morning-01',
+      batchName: 'Morning 08:00 AM - 10:00 AM',
+      subjectId: 'sb-office-01',
+      subjectName: 'MS Office & Advanced Excel',
+      facultyId: 'f-201',
+      facultyName: 'Er. R. K. Sharma',
+      attendanceDate: '2026-08-04',
+      classPeriod: 'Period 1 (08:00 AM - 09:30 AM)',
+      attendanceStatus: 'Present',
+      remarks: 'Active participation in Excel VLOOKUP practical',
+      studentPhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      isLocked: false,
+      createdDate: '2026-08-04T08:30:00.000Z',
+      updatedDate: '2026-08-04T08:30:00.000Z'
+    },
+    {
+      id: 'att-1002',
+      studentId: 'STU-2026-102',
+      studentName: 'Pooja Vishwakarma',
+      rollNumber: 'PCTA2026102',
+      courseId: 'c-python-01',
+      courseName: 'Python Programming & AI/ML Basics',
+      batchId: 'b-evening-01',
+      batchName: 'Evening 05:00 PM - 07:00 PM',
+      subjectId: 'sb-py-01',
+      subjectName: 'Python Fundamentals & Loops',
+      facultyId: 'f-202',
+      facultyName: 'Er. R. K. Sharma',
+      attendanceDate: '2026-08-04',
+      classPeriod: 'Period 3 (05:00 PM - 06:30 PM)',
+      attendanceStatus: 'Present',
+      remarks: 'Completed OOP exercise',
+      studentPhoto: '',
+      isLocked: false,
+      createdDate: '2026-08-04T17:15:00.000Z',
+      updatedDate: '2026-08-04T17:15:00.000Z'
+    },
+    {
+      id: 'att-1003',
+      studentId: 'STU-2026-101',
+      studentName: 'Rahul Sharma',
+      rollNumber: 'PCTA2026101',
+      courseId: 'c-adca-01',
+      courseName: 'ADCA (Advanced Diploma in Computer Applications)',
+      batchId: 'b-morning-01',
+      batchName: 'Morning 08:00 AM - 10:00 AM',
+      subjectId: 'sb-office-01',
+      subjectName: 'MS Office & Advanced Excel',
+      facultyId: 'f-201',
+      facultyName: 'Er. R. K. Sharma',
+      attendanceDate: '2026-08-03',
+      classPeriod: 'Period 1 (08:00 AM - 09:30 AM)',
+      attendanceStatus: 'Present',
+      remarks: 'On time',
+      studentPhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      isLocked: false,
+      createdDate: '2026-08-03T08:30:00.000Z',
+      updatedDate: '2026-08-03T08:30:00.000Z'
+    },
+    {
+      id: 'att-1004',
+      studentId: 'STU-2026-101',
+      studentName: 'Rahul Sharma',
+      rollNumber: 'PCTA2026101',
+      courseId: 'c-adca-01',
+      courseName: 'ADCA (Advanced Diploma in Computer Applications)',
+      batchId: 'b-morning-01',
+      batchName: 'Morning 08:00 AM - 10:00 AM',
+      subjectId: 'sb-tally-01',
+      subjectName: 'Tally Prime & GST Filing',
+      facultyId: 'f-201',
+      facultyName: 'Er. R. K. Sharma',
+      attendanceDate: '2026-08-02',
+      classPeriod: 'Period 2 (10:00 AM - 11:30 AM)',
+      attendanceStatus: 'Late',
+      remarks: 'Arrived 15 minutes late due to traffic',
+      studentPhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      isLocked: false,
+      createdDate: '2026-08-02T10:20:00.000Z',
+      updatedDate: '2026-08-02T10:20:00.000Z'
+    },
+    {
+      id: 'att-1005',
+      studentId: 'STU-2026-101',
+      studentName: 'Rahul Sharma',
+      rollNumber: 'PCTA2026101',
+      courseId: 'c-adca-01',
+      courseName: 'ADCA (Advanced Diploma in Computer Applications)',
+      batchId: 'b-morning-01',
+      batchName: 'Morning 08:00 AM - 10:00 AM',
+      subjectId: 'sb-office-01',
+      subjectName: 'MS Office & Advanced Excel',
+      facultyId: 'f-201',
+      facultyName: 'Er. R. K. Sharma',
+      attendanceDate: '2026-08-01',
+      classPeriod: 'Period 1 (08:00 AM - 09:30 AM)',
+      attendanceStatus: 'Absent',
+      remarks: 'Uninformed absence',
+      studentPhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      isLocked: false,
+      createdDate: '2026-08-01T08:30:00.000Z',
+      updatedDate: '2026-08-01T08:30:00.000Z'
+    }
+  ];
+
+  function loadAttendanceFromDisk(): any[] {
+    try {
+      if (fs.existsSync(ATTENDANCE_FILE_PATH)) {
+        const raw = fs.readFileSync(ATTENDANCE_FILE_PATH, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (err) {
+      console.error('Failed to load attendance_store.json:', err);
+    }
+    return initialAttendanceData;
+  }
+
+  function saveAttendanceToDisk() {
+    try {
+      fs.writeFileSync(ATTENDANCE_FILE_PATH, JSON.stringify(attendanceStore, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('Failed to write attendance_store.json:', err);
+    }
+  }
+
+  const attendanceStore = loadAttendanceFromDisk();
+
+  function loadAttendanceLocksFromDisk(): any[] {
+    try {
+      if (fs.existsSync(ATTENDANCE_LOCKS_FILE_PATH)) {
+        const raw = fs.readFileSync(ATTENDANCE_LOCKS_FILE_PATH, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (err) {
+      console.error('Failed to load attendance_locks_store.json:', err);
+    }
+    return [];
+  }
+
+  function saveAttendanceLocksToDisk() {
+    try {
+      fs.writeFileSync(ATTENDANCE_LOCKS_FILE_PATH, JSON.stringify(attendanceLocksStore, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('Failed to write attendance_locks_store.json:', err);
+    }
+  }
+
+  const attendanceLocksStore = loadAttendanceLocksFromDisk();
+
+  // Helper: Recalculate student attendance percentage
+  function recalculateStudentAttendancePercentage(studentId: string) {
+    const studentRecs = attendanceStore.filter(r => r.studentId === studentId || r.studentId === studentId.toUpperCase());
+    if (studentRecs.length === 0) return;
+
+    const total = studentRecs.length;
+    const presentOrLate = studentRecs.filter(r => r.attendanceStatus === 'Present' || r.attendanceStatus === 'Late' || r.attendanceStatus === 'Half Day').length;
+    const pct = Math.min(100, Math.max(0, Math.round((presentOrLate / total) * 100)));
+
+    const st = studentsStore.find(s => s.studentId === studentId || s.id === studentId);
+    if (st) {
+      st.attendancePercentage = pct;
+    }
+  }
+
+  // --- GET /api/attendance ---
+  app.get('/api/attendance', (req, res) => {
+    const {
+      date,
+      startDate,
+      endDate,
+      courseId,
+      batchId,
+      subjectId,
+      studentId,
+      facultyId,
+      status,
+      page,
+      limit
+    } = req.query;
+
+    let filtered = [...attendanceStore];
+
+    if (date) {
+      filtered = filtered.filter(r => r.attendanceDate === date);
+    }
+    if (startDate) {
+      filtered = filtered.filter(r => r.attendanceDate >= (startDate as string));
+    }
+    if (endDate) {
+      filtered = filtered.filter(r => r.attendanceDate <= (endDate as string));
+    }
+    if (courseId) {
+      filtered = filtered.filter(r => r.courseId === courseId || r.courseName?.toLowerCase().includes((courseId as string).toLowerCase()));
+    }
+    if (batchId) {
+      filtered = filtered.filter(r => r.batchId === batchId || r.batchName?.toLowerCase().includes((batchId as string).toLowerCase()));
+    }
+    if (subjectId) {
+      filtered = filtered.filter(r => r.subjectId === subjectId || r.subjectName?.toLowerCase().includes((subjectId as string).toLowerCase()));
+    }
+    if (studentId) {
+      filtered = filtered.filter(r => r.studentId === studentId || r.studentId?.toLowerCase().includes((studentId as string).toLowerCase()) || r.studentName?.toLowerCase().includes((studentId as string).toLowerCase()) || r.rollNumber?.toLowerCase().includes((studentId as string).toLowerCase()));
+    }
+    if (facultyId) {
+      filtered = filtered.filter(r => r.facultyId === facultyId || r.facultyName?.toLowerCase().includes((facultyId as string).toLowerCase()));
+    }
+    if (status) {
+      filtered = filtered.filter(r => r.attendanceStatus === status);
+    }
+
+    // Sort newest first
+    filtered.sort((a, b) => new Date(b.attendanceDate).getTime() - new Date(a.attendanceDate).getTime());
+
+    const pageNum = parseInt(page as string) || 1;
+    const limitNum = parseInt(limit as string) || 100;
+    const startIndex = (pageNum - 1) * limitNum;
+    const paginated = filtered.slice(startIndex, startIndex + limitNum);
+
+    const totalCount = filtered.length;
+    const presentCount = filtered.filter(r => r.attendanceStatus === 'Present').length;
+    const absentCount = filtered.filter(r => r.attendanceStatus === 'Absent').length;
+    const lateCount = filtered.filter(r => r.attendanceStatus === 'Late').length;
+    const halfDayCount = filtered.filter(r => r.attendanceStatus === 'Half Day').length;
+    const leaveCount = filtered.filter(r => r.attendanceStatus === 'Leave').length;
+
+    res.json({
+      success: true,
+      total: totalCount,
+      page: pageNum,
+      totalPages: Math.ceil(totalCount / limitNum) || 1,
+      stats: {
+        total: totalCount,
+        present: presentCount,
+        absent: absentCount,
+        late: lateCount,
+        halfDay: halfDayCount,
+        leave: leaveCount,
+        presentRate: totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
+      },
+      records: paginated
+    });
+  });
+
+  // --- POST /api/attendance/mark ---
+  app.post('/api/attendance/mark', (req, res) => {
+    const {
+      attendanceDate,
+      courseId,
+      courseName,
+      batchId,
+      batchName,
+      subjectId,
+      subjectName,
+      classPeriod,
+      facultyId,
+      facultyName,
+      records
+    } = req.body || {};
+
+    if (!attendanceDate || !records || !Array.isArray(records) || records.length === 0) {
+      res.status(400).json({ success: false, message: 'Missing required attendance data or student records.' });
+      return;
+    }
+
+    // Check locks for Date + Batch / Course
+    const isLocked = attendanceLocksStore.some(
+      l => l.date === attendanceDate && (l.batchId === batchId || l.courseId === courseId || l.batchId === 'ALL')
+    );
+
+    if (isLocked) {
+      res.status(403).json({
+        success: false,
+        message: `Attendance for date ${attendanceDate} and batch/course is LOCKED by Admin! Cannot modify.`
+      });
+      return;
+    }
+
+    const updatedOrCreated: any[] = [];
+    const editorName = facultyName || 'Faculty / Admin';
+
+    records.forEach((rec: any) => {
+      const { studentId, studentName, rollNumber, attendanceStatus, remarks, studentPhoto } = rec;
+      if (!studentId || !attendanceStatus) return;
+
+      // Check if existing record exists for student + date + subject + period to prevent duplicate entries
+      const existingIndex = attendanceStore.findIndex(
+        r =>
+          r.studentId === studentId &&
+          r.attendanceDate === attendanceDate &&
+          (r.subjectId === subjectId || r.subjectName === subjectName) &&
+          (r.classPeriod === classPeriod || !classPeriod)
+      );
+
+      const now = new Date().toISOString();
+
+      if (existingIndex !== -1) {
+        // Update existing
+        attendanceStore[existingIndex] = {
+          ...attendanceStore[existingIndex],
+          attendanceStatus,
+          remarks: remarks || '',
+          studentName: studentName || attendanceStore[existingIndex].studentName,
+          rollNumber: rollNumber || attendanceStore[existingIndex].rollNumber,
+          studentPhoto: studentPhoto || attendanceStore[existingIndex].studentPhoto,
+          updatedDate: now
+        };
+        updatedOrCreated.push(attendanceStore[existingIndex]);
+      } else {
+        // Create new record
+        const newRecord = {
+          id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          studentId,
+          studentName: studentName || 'Student',
+          rollNumber: rollNumber || '',
+          courseId: courseId || '',
+          courseName: courseName || 'General Course',
+          batchId: batchId || '',
+          batchName: batchName || 'Regular Batch',
+          subjectId: subjectId || '',
+          subjectName: subjectName || 'General Subject',
+          facultyId: facultyId || 'FAC-100',
+          facultyName: editorName,
+          attendanceDate,
+          classPeriod: classPeriod || 'Period 1',
+          attendanceStatus,
+          remarks: remarks || '',
+          studentPhoto: studentPhoto || '',
+          isLocked: false,
+          createdDate: now,
+          updatedDate: now
+        };
+        attendanceStore.unshift(newRecord);
+        updatedOrCreated.push(newRecord);
+      }
+
+      // Recalculate percentage for student
+      recalculateStudentAttendancePercentage(studentId);
+    });
+
+    saveAttendanceToDisk();
+
+    addAuditLog(
+      editorName,
+      'faculty',
+      'Marked Student Attendance',
+      req.ip || '127.0.0.1',
+      `Saved attendance for ${records.length} students in ${courseName || 'Course'} (${attendanceDate})`
+    );
+
+    res.json({
+      success: true,
+      message: `Attendance register for ${attendanceDate} saved successfully! (${updatedOrCreated.length} records)`,
+      savedCount: updatedOrCreated.length,
+      records: updatedOrCreated
+    });
+  });
+
+  // --- PUT /api/attendance/:id ---
+  app.put('/api/attendance/:id', (req, res) => {
+    const { id } = req.params;
+    const { attendanceStatus, remarks, attendanceDate, classPeriod } = req.body;
+
+    const recordIndex = attendanceStore.findIndex(r => r.id === id);
+    if (recordIndex === -1) {
+      res.status(404).json({ success: false, message: 'Attendance record not found.' });
+      return;
+    }
+
+    const rec = attendanceStore[recordIndex];
+
+    // Lock check
+    const isLocked = attendanceLocksStore.some(
+      l => l.date === rec.attendanceDate && (l.batchId === rec.batchId || l.courseId === rec.courseId || l.batchId === 'ALL')
+    );
+
+    if (isLocked) {
+      res.status(403).json({
+        success: false,
+        message: `Attendance for date ${rec.attendanceDate} is locked by Admin. Cannot modify.`
+      });
+      return;
+    }
+
+    if (attendanceStatus) rec.attendanceStatus = attendanceStatus;
+    if (remarks !== undefined) rec.remarks = remarks;
+    if (attendanceDate) rec.attendanceDate = attendanceDate;
+    if (classPeriod) rec.classPeriod = classPeriod;
+    rec.updatedDate = new Date().toISOString();
+
+    recalculateStudentAttendancePercentage(rec.studentId);
+    saveAttendanceToDisk();
+
+    addAuditLog(
+      'Admin / Faculty',
+      'admin',
+      'Updated Attendance Record',
+      req.ip || '127.0.0.1',
+      `Updated record for student ${rec.studentName} (${rec.studentId}) on ${rec.attendanceDate}`
+    );
+
+    res.json({
+      success: true,
+      message: 'Attendance record updated successfully!',
+      record: rec
+    });
+  });
+
+  // --- DELETE /api/attendance/:id ---
+  app.delete('/api/attendance/:id', checkAdminRbac, (req, res) => {
+    const { id } = req.params;
+    const index = attendanceStore.findIndex(r => r.id === id);
+
+    if (index === -1) {
+      res.status(404).json({ success: false, message: 'Attendance record not found.' });
+      return;
+    }
+
+    const removed = attendanceStore.splice(index, 1)[0];
+    recalculateStudentAttendancePercentage(removed.studentId);
+    saveAttendanceToDisk();
+
+    addAuditLog(
+      'Admin',
+      'admin',
+      'Deleted Attendance Record',
+      req.ip || '127.0.0.1',
+      `Deleted record for student ${removed.studentName} (${removed.studentId}) on ${removed.attendanceDate}`
+    );
+
+    res.json({
+      success: true,
+      message: 'Attendance record deleted successfully!'
+    });
+  });
+
+  // --- POST /api/attendance/lock ---
+  app.post('/api/attendance/lock', checkAdminRbac, (req, res) => {
+    const { date, batchId, courseId, action, reason } = req.body || {};
+    const editorName = (req.headers['x-user-name'] as string) || 'Institute Admin';
+
+    if (!date) {
+      res.status(400).json({ success: false, message: 'Date is required for locking attendance.' });
+      return;
+    }
+
+    if (action === 'unlock') {
+      const lockIdx = attendanceLocksStore.findIndex(
+        l => l.date === date && (l.batchId === batchId || !batchId)
+      );
+      if (lockIdx !== -1) {
+        attendanceLocksStore.splice(lockIdx, 1);
+        saveAttendanceLocksToDisk();
+      }
+      addAuditLog(editorName, 'admin', 'Unlocked Attendance', req.ip || '127.0.0.1', `Unlocked attendance for date: ${date}`);
+      res.json({ success: true, message: `Attendance for date ${date} unlocked successfully.` });
+      return;
+    }
+
+    // Default: lock
+    const newLock = {
+      id: `lock-${Date.now()}`,
+      date,
+      batchId: batchId || 'ALL',
+      courseId: courseId || 'ALL',
+      lockedBy: editorName,
+      lockedAt: new Date().toISOString(),
+      reason: reason || 'Locked by Institute Admin'
+    };
+
+    attendanceLocksStore.unshift(newLock);
+    saveAttendanceLocksToDisk();
+
+    addAuditLog(editorName, 'admin', 'Locked Attendance', req.ip || '127.0.0.1', `Locked attendance for date: ${date}`);
+
+    res.json({
+      success: true,
+      message: `Attendance for date ${date} locked successfully. Faculty will not be able to edit past records.`,
+      lock: newLock
+    });
+  });
+
+  // --- GET /api/attendance/locks ---
+  app.get('/api/attendance/locks', (req, res) => {
+    res.json({
+      success: true,
+      locks: attendanceLocksStore
+    });
+  });
+
+  // --- GET /api/attendance/reports ---
+  app.get('/api/attendance/reports', (req, res) => {
+    const { courseId, batchId, month, year } = req.query;
+
+    let records = [...attendanceStore];
+    if (courseId) {
+      records = records.filter(r => r.courseId === courseId || r.courseName?.toLowerCase().includes((courseId as string).toLowerCase()));
+    }
+    if (batchId) {
+      records = records.filter(r => r.batchId === batchId || r.batchName?.toLowerCase().includes((batchId as string).toLowerCase()));
+    }
+    if (month && year) {
+      records = records.filter(r => r.attendanceDate.startsWith(`${year}-${String(month).padStart(2, '0')}`));
+    }
+
+    // Build student-wise aggregation
+    const studentMap = new Map<string, any>();
+
+    records.forEach(r => {
+      if (!studentMap.has(r.studentId)) {
+        studentMap.set(r.studentId, {
+          studentId: r.studentId,
+          studentName: r.studentName,
+          rollNumber: r.rollNumber,
+          courseName: r.courseName,
+          batchName: r.batchName,
+          studentPhoto: r.studentPhoto,
+          totalClasses: 0,
+          presentCount: 0,
+          absentCount: 0,
+          lateCount: 0,
+          halfDayCount: 0,
+          leaveCount: 0
+        });
+      }
+
+      const s = studentMap.get(r.studentId);
+      s.totalClasses += 1;
+      if (r.attendanceStatus === 'Present') s.presentCount += 1;
+      else if (r.attendanceStatus === 'Absent') s.absentCount += 1;
+      else if (r.attendanceStatus === 'Late') s.lateCount += 1;
+      else if (r.attendanceStatus === 'Half Day') s.halfDayCount += 1;
+      else if (r.attendanceStatus === 'Leave') s.leaveCount += 1;
+    });
+
+    const studentSummaries = Array.from(studentMap.values()).map(s => {
+      const attended = s.presentCount + s.lateCount + s.halfDayCount;
+      const percentage = s.totalClasses > 0 ? Math.round((attended / s.totalClasses) * 100) : 100;
+      return {
+        ...s,
+        attendancePercentage: percentage,
+        isLowAttendance: percentage < 75
+      };
+    });
+
+    // Low attendance warning list (<75%)
+    const lowAttendanceStudents = studentSummaries.filter(s => s.isLowAttendance);
+
+    res.json({
+      success: true,
+      summary: {
+        totalRecords: records.length,
+        totalStudents: studentSummaries.length,
+        lowAttendanceCount: lowAttendanceStudents.length,
+        averagePercentage: studentSummaries.length > 0
+          ? Math.round(studentSummaries.reduce((a, b) => a + b.attendancePercentage, 0) / studentSummaries.length)
+          : 0
+      },
+      studentSummaries,
+      lowAttendanceStudents
+    });
+  });
+
+  // --- GET /api/student/attendance/:studentId ---
+  app.get('/api/student/attendance/:studentId', (req, res) => {
+    const { studentId } = req.params;
+
+    const studentRecs = attendanceStore.filter(
+      r => r.studentId === studentId || r.studentId.toUpperCase() === studentId.toUpperCase() || r.rollNumber?.toUpperCase() === studentId.toUpperCase()
+    );
+
+    studentRecs.sort((a, b) => new Date(b.attendanceDate).getTime() - new Date(a.attendanceDate).getTime());
+
+    const total = studentRecs.length;
+    const present = studentRecs.filter(r => r.attendanceStatus === 'Present').length;
+    const absent = studentRecs.filter(r => r.attendanceStatus === 'Absent').length;
+    const late = studentRecs.filter(r => r.attendanceStatus === 'Late').length;
+    const halfDay = studentRecs.filter(r => r.attendanceStatus === 'Half Day').length;
+    const leave = studentRecs.filter(r => r.attendanceStatus === 'Leave').length;
+
+    const attended = present + late + halfDay;
+    const percentage = total > 0 ? Math.round((attended / total) * 100) : 100;
+
+    res.json({
+      success: true,
+      stats: {
+        totalClasses: total,
+        present,
+        absent,
+        late,
+        halfDay,
+        leave,
+        percentage,
+        isLowAttendance: percentage < 75
+      },
+      records: studentRecs
+    });
+  });
+
+  // --- POST /api/attendance/bulk-import ---
+  app.post('/api/attendance/bulk-import', checkAdminRbac, (req, res) => {
+    const { records } = req.body || {};
+    if (!records || !Array.isArray(records) || records.length === 0) {
+      res.status(400).json({ success: false, message: 'Invalid or empty bulk attendance records.' });
+      return;
+    }
+
+    let importedCount = 0;
+    records.forEach((r: any) => {
+      if (!r.studentId || !r.attendanceDate || !r.attendanceStatus) return;
+
+      const newRec = {
+        id: `att-import-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        studentId: r.studentId,
+        studentName: r.studentName || 'Student',
+        rollNumber: r.rollNumber || '',
+        courseId: r.courseId || '',
+        courseName: r.courseName || 'General',
+        batchId: r.batchId || '',
+        batchName: r.batchName || 'Regular',
+        subjectId: r.subjectId || '',
+        subjectName: r.subjectName || 'General Subject',
+        facultyId: r.facultyId || 'FAC-100',
+        facultyName: r.facultyName || 'Bulk Import',
+        attendanceDate: r.attendanceDate,
+        classPeriod: r.classPeriod || 'Period 1',
+        attendanceStatus: r.attendanceStatus,
+        remarks: r.remarks || 'Bulk Imported',
+        studentPhoto: r.studentPhoto || '',
+        isLocked: false,
+        createdDate: new Date().toISOString(),
+        updatedDate: new Date().toISOString()
+      };
+
+      attendanceStore.unshift(newRec);
+      recalculateStudentAttendancePercentage(r.studentId);
+      importedCount++;
+    });
+
+    saveAttendanceToDisk();
+
+    res.json({
+      success: true,
+      message: `Successfully imported ${importedCount} attendance records into the central database!`,
+      importedCount
+    });
+  });
+
 
   // AI Chat Assistant Route (Gemini 2.5 Flash)
   app.post('/api/ai/chat', async (req, res) => {

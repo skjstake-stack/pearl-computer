@@ -7,6 +7,7 @@ import { AdminCourseModule } from './AdminCourseModule';
 import { AdminCenterManagementModule } from './AdminCenterManagementModule';
 import { AdminManagingDirectorModule } from './AdminManagingDirectorModule';
 import { AdminEventsModule } from './AdminEventsModule';
+import { AdminAttendanceModule } from './AdminAttendanceModule';
 import {
   ShieldAlert,
   Building2,
@@ -52,7 +53,7 @@ interface AdminPanelDashboardProps {
 }
 
 export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ currentUser, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'courses' | 'admissions' | 'students' | 'faculty' | 'centers' | 'idcard' | 'emailSettings' | 'auditLogs' | 'gallery' | 'managingDirector' | 'events'>('courses');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'courses' | 'admissions' | 'students' | 'faculty' | 'attendance' | 'centers' | 'idcard' | 'emailSettings' | 'auditLogs' | 'gallery' | 'managingDirector' | 'events'>('courses');
 
   // Server Data Stores
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);
@@ -509,6 +510,15 @@ export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ curren
           </button>
 
           <button
+            onClick={() => setActiveTab('attendance')}
+            className={`pb-3 border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'attendance' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-extrabold' : 'text-slate-500'
+            }`}
+          >
+            <Clock className="w-4 h-4 text-emerald-500" /> Attendance Manager
+          </button>
+
+          <button
             onClick={() => setActiveTab('centers')}
             className={`pb-3 border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'centers' ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-extrabold' : 'text-slate-500'
@@ -815,6 +825,11 @@ export const AdminPanelDashboard: React.FC<AdminPanelDashboardProps> = ({ curren
             facultyList={faculty}
             onRefreshFaculty={fetchAdminData}
           />
+        )}
+
+        {/* ATTENDANCE MANAGER TAB */}
+        {activeTab === 'attendance' && (
+          <AdminAttendanceModule />
         )}
 
         {/* ID CARD MANAGEMENT MODULE TAB */}

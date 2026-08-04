@@ -522,3 +522,38 @@ export interface DirectorVersionHistory {
   data: DirectorDeskData;
 }
 
+export type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave';
+
+export interface AttendanceRecord {
+  id: string;
+  studentId: string;
+  studentName: string;
+  rollNumber: string;
+  courseId: string;
+  courseName: string;
+  batchId: string;
+  batchName: string;
+  subjectId: string;
+  subjectName: string;
+  facultyId: string;
+  facultyName: string;
+  attendanceDate: string; // YYYY-MM-DD
+  classPeriod: string; // e.g. "Period 1 (09:00 AM - 10:30 AM)"
+  attendanceStatus: AttendanceStatus;
+  remarks?: string;
+  studentPhoto?: string;
+  isLocked?: boolean;
+  createdDate: string;
+  updatedDate: string;
+}
+
+export interface AttendanceLockRecord {
+  id: string;
+  date: string;
+  batchId: string;
+  courseId: string;
+  lockedBy: string;
+  lockedAt: string;
+  reason?: string;
+}
+

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { UserSession } from '../types';
 import { sampleStudents } from '../data/mockData';
+import { FacultyAttendanceModule } from './FacultyAttendanceModule';
 
 interface FacultyPortalDashboardProps {
   currentUser: UserSession;
@@ -431,64 +432,7 @@ export const FacultyPortalDashboard: React.FC<FacultyPortalDashboardProps> = ({
 
         {/* TAB 3: ATTENDANCE */}
         {activeTab === 'attendance' && (
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-            <div className="flex justify-between items-center border-b pb-3">
-              <div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm">Daily Student Attendance Register</h3>
-                <p className="text-xs text-slate-500">Date: {new Date().toLocaleDateString()}</p>
-              </div>
-
-              <div className="flex gap-2 text-xs">
-                <button
-                  onClick={() => setAttendanceList(attendanceList.map(s => ({ ...s, present: true })))}
-                  className="px-3 py-1.5 bg-emerald-50 text-emerald-700 font-bold rounded-xl border border-emerald-200 cursor-pointer"
-                >
-                  Mark All Present
-                </button>
-              </div>
-            </div>
-
-            {attendanceSaved && (
-              <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Attendance register synced with Central Database!
-              </div>
-            )}
-
-            <div className="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
-              {attendanceList.map((st, idx) => (
-                <div key={st.id} className="py-3 flex justify-between items-center">
-                  <div>
-                    <span className="font-bold text-slate-800 dark:text-white text-sm">{st.name}</span>
-                    <span className="text-slate-400 block text-[11px]">{st.studentId} • {st.course}</span>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      const updated = [...attendanceList];
-                      updated[idx].present = !updated[idx].present;
-                      setAttendanceList(updated);
-                    }}
-                    className={`px-4 py-2 rounded-xl font-bold cursor-pointer transition-colors ${
-                      st.present ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-red-100 text-red-800 hover:bg-red-200'
-                    }`}
-                  >
-                    {st.present ? 'Present ✔' : 'Absent ✖'}
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => {
-                setAttendanceSaved(true);
-                setTimeout(() => setAttendanceSaved(false), 4000);
-              }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs shadow-md cursor-pointer"
-            >
-              Submit Today's Attendance Register
-            </button>
-          </div>
+          <FacultyAttendanceModule facultyName={currentUser?.name} facultyId={currentUser?.employeeId} />
         )}
 
         {/* TAB 4: MARKS & EXAM RESULTS */}
