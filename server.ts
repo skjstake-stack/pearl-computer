@@ -4016,6 +4016,248 @@ async function startServer() {
     });
   });
 
+  // --- POST /api/gallery/upload ---
+  // Gallery Image Upload API using Cloudinary (folder: gallery/)
+  app.post('/api/gallery/upload', checkAdminRbac, (req, res, next) => {
+    multerUpload.any()(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            success: false,
+            message: 'File size exceeds the 5 MB maximum limit.'
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          message: err.message || 'File upload error.'
+        });
+      }
+      next();
+    });
+  }, async (req: express.Request, res: express.Response) => {
+    try {
+      const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+      const apiKey = process.env.CLOUDINARY_API_KEY;
+      const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+      if (!cloudName || !apiKey || !apiSecret) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cloudinary environment variables missing. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.'
+        });
+      }
+
+      const title = (req.body?.title || req.body?.name || 'Gallery Image').trim();
+      const description = (req.body?.description || '').trim();
+
+      const imagesToUpload: Array<{ data: string; title?: string; description?: string }> = [];
+
+      // 1. Files from Multer
+      const files = req.files && Array.isArray(req.files) ? req.files : (req.file ? [req.file] : []);
+      for (const f of files) {
+        const mime = f.mimetype;
+        const base64Data = f.buffer.toString('base64');
+        imagesToUpload.push({
+          data: `data:${mime};base64,${base64Data}`,
+          title,
+          description
+        });
+      }
+
+      // 2. Base64 strings or images array in JSON body
+      if (imagesToUpload.length === 0 && req.body) {
+        const rawImages = req.body.images || req.body.files || (req.body.image || req.body.file || req.body.imageBase64 ? [req.body.image || req.body.file || req.body.imageBase64] : []);
+        if (Array.isArray(rawImages)) {
+          for (const item of rawImages) {
+            if (typeof item === 'string') {
+              imagesToUpload.push({ data: item, title, description });
+            } else if (item && typeof item === 'object' && item.data) {
+              imagesToUpload.push({
+                data: item.data || item.url || item.imageBase64,
+                title: item.title || title,
+                description: item.description || description
+              });
+            }
+          }
+        }
+      }
+
+      if (imagesToUpload.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No image file or image data provided. Please upload image files or provide image base64 payloads.'
+        });
+      }
+
+      const uploadedRecords: any[] = [];
+
+      for (const item of imagesToUpload) {
+        const uploadResult = await cloudinary.uploader.upload(item.data, {
+          folder: 'gallery',
+          resource_type: 'image'
+        });
+
+        const createdAt = new Date().toISOString();
+        const recordId = `gallery-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+        const galleryRecord = {
+          id: recordId,
+          title: item.title || title,
+          description: item.description || description,
+          image_url: uploadResult.secure_url,
+          cloudinary_public_id: uploadResult.public_id,
+          created_at: createdAt
+        };
+
+        const photoItem = {
+          id: recordId,
+          title: item.title || title,
+          description: item.description || description,
+          url: uploadResult.secure_url,
+          thumbnailUrl: uploadResult.secure_url,
+          image_url: uploadResult.secure_url,
+          cloudinary_public_id: uploadResult.public_id,
+          category: 'Gallery',
+          albumId: req.body?.albumId || '',
+          albumName: 'Gallery',
+          event: 'Gallery Upload',
+          year: new Date().getFullYear(),
+          altText: item.title || title,
+          seoKeywords: 'gallery, media, pearl academy',
+          isPublished: true,
+          uploadedAt: createdAt.split('T')[0],
+          created_at: createdAt
+        };
+
+        galleryPhotosStore.unshift(photoItem as any);
+        uploadedRecords.push(galleryRecord);
+      }
+
+      saveGalleryPhotosToDisk();
+
+      addAuditLog('System', 'admin', 'Uploaded Gallery Images to Cloudinary', req.ip || '127.0.0.1', `Uploaded ${uploadedRecords.length} gallery image(s) to Cloudinary (folder: gallery/)`);
+
+      return res.status(200).json({
+        success: true,
+        message: `${uploadedRecords.length} gallery image(s) uploaded successfully to Cloudinary!`,
+        images: uploadedRecords,
+        gallery_images: uploadedRecords
+      });
+    } catch (err: any) {
+      console.error('Cloudinary gallery upload error:', err);
+      return res.status(500).json({
+        success: false,
+        message: err?.message || 'Failed to upload gallery image to Cloudinary.',
+        error: err ? err.toString() : 'Unknown error'
+      });
+    }
+  });
+
+  // --- POST /api/director/upload-image ---
+  // Director Profile Image Upload API using Cloudinary (folder: director_profile/)
+  app.post('/api/director/upload-image', checkAdminRbac, (req, res, next) => {
+    multerUpload.any()(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            success: false,
+            message: 'File size exceeds the 5 MB maximum limit.'
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          message: err.message || 'File upload error.'
+        });
+      }
+      next();
+    });
+  }, async (req: express.Request, res: express.Response) => {
+    try {
+      const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+      const apiKey = process.env.CLOUDINARY_API_KEY;
+      const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+      if (!cloudName || !apiKey || !apiSecret) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cloudinary environment variables missing. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.'
+        });
+      }
+
+      let imageToUpload: string | null = null;
+      const file = req.file || (req.files && Array.isArray(req.files) && req.files.length > 0 ? req.files[0] : null);
+
+      if (file) {
+        const mime = file.mimetype;
+        const base64Data = file.buffer.toString('base64');
+        imageToUpload = `data:${mime};base64,${base64Data}`;
+      } else if (req.body && (req.body.image || req.body.file || req.body.photo || req.body.imageBase64)) {
+        imageToUpload = req.body.image || req.body.file || req.body.photo || req.body.imageBase64;
+      }
+
+      if (!imageToUpload) {
+        return res.status(400).json({
+          success: false,
+          message: 'No image file or image data provided. Please upload an image file or provide a base64 image payload.'
+        });
+      }
+
+      // Replace old image by deleting old Cloudinary asset if exists
+      const oldPublicId = (directorsDeskStore as any).cloudinary_public_id || req.body?.old_cloudinary_public_id;
+      if (oldPublicId) {
+        try {
+          await cloudinary.uploader.destroy(oldPublicId);
+        } catch (destroyErr) {
+          console.error('Cloudinary old director image deletion warning:', destroyErr);
+        }
+      }
+
+      // Upload new image to Cloudinary (folder: "director_profile")
+      const uploadResult = await cloudinary.uploader.upload(imageToUpload, {
+        folder: 'director_profile',
+        resource_type: 'image'
+      });
+
+      const public_id = uploadResult.public_id;
+      const secure_url = uploadResult.secure_url;
+      const updatedAt = new Date().toISOString();
+
+      // Update Director Store Record
+      directorsDeskStore.photoUrl = secure_url;
+      (directorsDeskStore as any).cloudinary_public_id = public_id;
+      directorsDeskStore.updatedAt = updatedAt;
+
+      if (req.body?.name) directorsDeskStore.name = req.body.name;
+      if (req.body?.designation) directorsDeskStore.designation = req.body.designation;
+      if (req.body?.message) directorsDeskStore.welcomeMessage = req.body.message;
+
+      saveDirectorToDisk();
+
+      addAuditLog('System', 'admin', 'Uploaded Director Profile Image to Cloudinary', req.ip || '127.0.0.1', `Uploaded director profile image (Public ID: ${public_id})`);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Director profile image uploaded successfully to Cloudinary!',
+        director_profile: {
+          id: directorsDeskStore.id,
+          name: directorsDeskStore.name,
+          designation: directorsDeskStore.designation,
+          message: directorsDeskStore.welcomeMessage,
+          image_url: secure_url,
+          cloudinary_public_id: public_id,
+          updated_at: updatedAt
+        }
+      });
+    } catch (err: any) {
+      console.error('Cloudinary director profile image upload error:', err);
+      return res.status(500).json({
+        success: false,
+        message: err?.message || 'Failed to upload director profile image to Cloudinary.',
+        error: err ? err.toString() : 'Unknown error'
+      });
+    }
+  });
+
   // -------------------------------------------------------------
   // STUDENT ATTENDANCE MANAGEMENT STORE & API ENDPOINTS
   // -------------------------------------------------------------

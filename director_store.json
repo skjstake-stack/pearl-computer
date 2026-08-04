@@ -1,0 +1,33 @@
+{
+  "id": "dir-desk-1",
+  "photoUrl": "https://res.cloudinary.com/z3ljbmty/image/upload/v1785879107/director_profile/hsscfv3znodouxuwnyeo.png",
+  "name": "Mr. Bisan Kanarzee",
+  "designation": "Managing Director & Founder",
+  "qualification": "M.Tech (Computer Science), Ex-IT Consultant & Senior Educationist",
+  "welcomeMessage": "<p>Welcome to <strong>Pearl Computer & Target Academy</strong>, your premier destination for career-defining computer education and civil service competitive exam coaching in Madhya Pradesh.</p><p>Since our founding in 2012 in Indore and Chhindwara, our vision has been clear: to empower students with industry-relevant IT skills, ISO 9001:2015 recognized diplomas, and disciplined coaching for MPPSC, Patwari, SSC, and Govt examinations.</p><p>Equipped with state-of-the-art practical computer labs and led by veteran M.Tech engineers, Chartered Accountants, and subject matter experts, we ensure every student gains real-world confidence and 100% placement assistance.</p>",
+  "vision": "To be Central India's most trusted, innovative, and accessible institution for tech education and civil service excellence, fostering skilled professionals and ethically grounded leaders.",
+  "mission": "To deliver high-impact practical training, modern digital infrastructure, affordable fee structures, and dedicated mentorship to every ambitious student across Madhya Pradesh.",
+  "inspirationalQuote": "“Education is not the learning of facts, but the training of the mind to think, innovate, and serve.”",
+  "signatureUrl": "https://images.unsplash.com/photo-1585076646199-10c26468450f?w=400",
+  "email": "director@pearlacademyindore.com",
+  "phone": "+91 93292-84693",
+  "socialLinks": {
+    "linkedin": "https://linkedin.com/in/director-pearl-academy",
+    "twitter": "https://twitter.com/pearl_academy_dir",
+    "facebook": "https://facebook.com/pearlcomputer.targetacademy",
+    "instagram": "https://instagram.com/pearlacademy_official"
+  },
+  "pdfMessageUrl": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  "isPublished": true,
+  "seo": {
+    "seoTitle": "Director's Desk - Pearl Computer & Target Academy",
+    "metaDescription": "Read the inspirational welcome message, vision, and mission from Mr. Bisan Kanarzee, Managing Director of Pearl Computer & Target Academy.",
+    "metaKeywords": "Director Message, Pearl Computer, Target Academy, Mr. Bisan Kanarzee, Institute Vision, Indore, M.P.",
+    "slug": "directors-desk",
+    "ogImage": "https://linkinseconds.com/p/whatsapp-image-2026-08-02-at-13-34-25-1",
+    "altText": "Mr. Bisan Kanarzee - Director Pearl Academy"
+  },
+  "updatedAt": "2026-08-04T21:31:48.394Z",
+  "updatedBy": "System Administrator",
+  "cloudinary_public_id": "director_profile/hsscfv3znodouxuwnyeo"
+}
